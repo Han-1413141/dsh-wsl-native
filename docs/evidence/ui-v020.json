@@ -1,0 +1,22 @@
+{
+  "date": "2026-09-30T08:46:47.527Z",
+  "version": "0.2.0",
+  "nativeDshControls": true,
+  "sameTabWindowsLinuxRoundTrip": true,
+  "linuxProjectAutoOpened": true,
+  "parallelPagesObserved": true,
+  "otherProjectRemainedSelected": true,
+  "windowsWorkspaceRestored": true,
+  "windowsUnsentDraftRestored": true,
+  "invalidDirectoryPreservedActiveSettings": true,
+  "lightTheme": true,
+  "darkTheme": true,
+  "narrow420x820": {
+    "document": 420,
+    "page": 359,
+    "scroll": 359,
+    "viewport": 420
+  },
+  "frontendWarnings": 0,
+  "frontendErrors": 0
+}

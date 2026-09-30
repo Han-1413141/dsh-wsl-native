@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-30",
+  "description": "本机已启动的 Ubuntu；30 轮交错 /bin/true；不含模型推理与网络请求",
+  "nodeWindows": "v24.19.0",
+  "nodeLinux": "v22.22.1",
+  "distro": "Ubuntu",
+  "connectMs": 913.428,
+  "resident": {
+    "n": 30,
+    "medianMs": 4.601,
+    "p95Ms": 100.012,
+    "minMs": 3.274,
+    "maxMs": 100.16
+  },
+  "oneWslProcessPerCommand": {
+    "n": 30,
+    "medianMs": 289.644,
+    "p95Ms": 1156.727,
+    "minMs": 172.886,
+    "maxMs": 1856.484
+  },
+  "ping": {
+    "n": 30,
+    "medianMs": 0.616,
+    "p95Ms": 1.048,
+    "minMs": 0.379,
+    "maxMs": 1.502
+  },
+  "processStarts": 1,
+  "medianSpeedup": 62.95
+}

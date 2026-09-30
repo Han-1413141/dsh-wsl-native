@@ -1,0 +1,19 @@
+{
+  "date": "2026-09-30",
+  "dsh": "0.2.0-rc.2",
+  "host": "wsl-host",
+  "windows": {
+    "platform": "win32",
+    "pid": 25980,
+    "node": "v24.19.0",
+    "user": "57752",
+    "home": "C:\\Users\\57752",
+    "distro": null,
+    "arch": "x64",
+    "uptime": 0.0428601
+  },
+  "windowsBrowserReachable": true,
+  "authenticatedApi": true,
+  "officialCarrier": true,
+  "toolReadWindowsFile": true
+}

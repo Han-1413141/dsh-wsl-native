@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-30",
+  "version": "0.1.0",
+  "scope": "Historical folder-picker and initial UI checks; current 0.2.0 UI evidence is in ui-v020.json",
+  "dsh": "0.2.0-rc.2",
+  "method": "Real DSH Web host, browser interactions, actual Ubuntu WSL 2",
+  "clientBytes": 32827,
+  "clientLimit": 262144,
+  "checks": {
+    "nativeSidebarAndMainPanel": true,
+    "officialComponents": true,
+    "lightTheme": true,
+    "darkTheme": true,
+    "narrowViewport": {
+      "width": 420,
+      "height": 820,
+      "horizontalOverflow": false
+    },
+    "draftPreservedOnRefresh": true,
+    "folderSelection": true,
+    "hiddenEntries": true,
+    "modalReturnFocus": true,
+    "folderPagination": {
+      "firstPage": 200,
+      "totalAfterLoading": 220,
+      "fixtureRemoved": true
+    },
+    "invalidFolderFriendlyError": true,
+    "errorDisablesSelection": true,
+    "recoverAfterFolderError": true,
+    "linuxEnvironmentUpdate": true,
+    "linuxDshStart": true,
+    "linuxDshStop": true,
+    "settingsDisabledWhileRunning": true,
+    "wslHostLayout": true,
+    "wslHostConnectWindows": true,
+    "frontendErrorLogs": 0
+  },
+  "startupFix": {
+    "observed": "WSL localhost forwarding was unavailable on the first attempt; retry succeeded",
+    "change": "Bounded readiness wait up to 15000 ms with cancellation",
+    "unitChecks": 2,
+    "freshWindowsHostStart": true
+  },
+  "limits": [
+    "Windows Desktop packaged app not tested",
+    "No model API calls"
+  ]
+}

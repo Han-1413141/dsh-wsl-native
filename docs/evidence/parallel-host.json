@@ -1,0 +1,16 @@
+{
+  "date": "2026-09-30T08:43:48.126Z",
+  "version": "0.2.0",
+  "windowsHost": "windows-host",
+  "linuxHost": "wsl-host",
+  "simultaneousAuthenticatedHosts": true,
+  "reverseWindowsInterop": true,
+  "warmInstanceReused": true,
+  "tamperedHandoffRejected": true,
+  "nativeId": "0e71251a-4624-4764-9572-cc898737f45f",
+  "warmEnterApiMs": 31,
+  "coldEnterApiMs": 6178,
+  "sameLinuxDirectory": true,
+  "windowsDirectory": "/home/codex/.local/share/dsh-wsl-native/validation-3cce14bf-a2eb-44db-91ff-0f471d642d3f/project-alpha",
+  "linuxDirectory": "/home/codex/.local/share/dsh-wsl-native/validation-3cce14bf-a2eb-44db-91ff-0f471d642d3f/project-alpha"
+}

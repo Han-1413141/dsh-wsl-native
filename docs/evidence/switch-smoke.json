@@ -1,0 +1,45 @@
+{
+  "date": "2026-09-30T08:16:16.026Z",
+  "distro": "Ubuntu",
+  "root": "/home/codex/.local/share/dsh-wsl-native/validation-3cce14bf-a2eb-44db-91ff-0f471d642d3f",
+  "a": "/home/codex/.local/share/dsh-wsl-native/validation-3cce14bf-a2eb-44db-91ff-0f471d642d3f/project-alpha",
+  "b": "/home/codex/.local/share/dsh-wsl-native/validation-3cce14bf-a2eb-44db-91ff-0f471d642d3f/project-beta",
+  "native": {
+    "platform": "linux",
+    "cwd": "/home/codex/.local/share/dsh-wsl-native/validation-3cce14bf-a2eb-44db-91ff-0f471d642d3f/project-alpha",
+    "caseSensitive": true,
+    "symlinks": true,
+    "executableMode": true,
+    "fileWatch": true
+  },
+  "results": [
+    {
+      "name": "Linux 大小写、符号链接、可执行权限与原生文件监听",
+      "ok": true
+    },
+    {
+      "name": "真实后台任务在切换目录后继续留在原目录",
+      "ok": true
+    },
+    {
+      "name": "后续命令使用新的 Linux 目录",
+      "ok": true
+    },
+    {
+      "name": "Windows 原生命令与 Linux 命令同时可用",
+      "ok": true
+    },
+    {
+      "name": "真实目录失效时原环境保持可用",
+      "ok": true
+    },
+    {
+      "name": "Windows 路径自动转换并识别跨文件系统目录",
+      "ok": true
+    },
+    {
+      "name": "默认用户与显式用户名共用同一常驻进程",
+      "ok": true
+    }
+  ]
+}

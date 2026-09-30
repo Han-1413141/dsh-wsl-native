@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-30",
+  "version": "0.2.0",
+  "unit": {
+    "pass": 37,
+    "fail": 0
+  },
+  "wsl": {
+    "pass": 10,
+    "fail": 0
+  },
+  "environmentSwitch": {
+    "pass": 7,
+    "fail": 0
+  },
+  "syntax": true,
+  "windowsDshHost": true,
+  "linuxDshHost": true,
+  "packagedInstallOutsideSourceTree": true,
+  "clientBytes": 43962,
+  "workerBytes": 29373,
+  "startupWait": {
+    "pass": 2,
+    "fail": 0
+  },
+  "uiRevision": "0.2.0",
+  "simultaneousAuthenticatedHosts": true,
+  "windowsDraftRestoredAfterRoundTrip": true,
+  "tamperedHandoffRejected": true
+}

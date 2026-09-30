@@ -1,0 +1,19 @@
+{
+  "date": "2026-09-30",
+  "dsh": "0.2.0-rc.2",
+  "host": "windows-host",
+  "linux": {
+    "platform": "linux",
+    "pid": 353,
+    "node": "v22.22.1",
+    "user": "codex",
+    "home": "/home/codex",
+    "distro": "Ubuntu",
+    "arch": "x64",
+    "uptime": 0.283948615
+  },
+  "authenticatedApi": true,
+  "officialCarrier": true,
+  "unauthenticatedRejected": true,
+  "csrfRejected": true
+}

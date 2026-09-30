@@ -1,0 +1,50 @@
+{
+  "date": "2026-09-30",
+  "distro": "Ubuntu",
+  "results": [
+    {
+      "name": "Windows 与 Linux 真实进程",
+      "ok": true,
+      "linuxNode": "v22.22.1",
+      "windowsNode": "v24.19.0"
+    },
+    {
+      "name": "跨系统命令参数无转义损坏",
+      "ok": true
+    },
+    {
+      "name": "Linux 文本、符号链接与原子写入",
+      "ok": true
+    },
+    {
+      "name": "3 MiB 二进制往返及 SHA-256",
+      "ok": true,
+      "bytes": 3145759,
+      "sha256": "bdc5c97453de959d66b8b0232e1ec22ee1ba32a26aece7e82d73650ac32cb95a"
+    },
+    {
+      "name": "真实 wslpath 双向转换",
+      "ok": true
+    },
+    {
+      "name": "Linux 超时、取消与连接继续可用",
+      "ok": true
+    },
+    {
+      "name": "全部操作复用两个常驻进程",
+      "ok": true
+    },
+    {
+      "name": "Linux 后台任务取消",
+      "ok": true
+    },
+    {
+      "name": "WSL 宿主反向调用 Windows PowerShell",
+      "ok": true
+    },
+    {
+      "name": "SIGTERM 回收后台进程并释放运行锁",
+      "ok": true
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "date": "2026-09-30",
+  "version": "0.3.0",
+  "unit": {
+    "pass": 43,
+    "fail": 0,
+    "skipped": 0
+  },
+  "syntax": true,
+  "build": true,
+  "windowsDshHost": true,
+  "linuxDshHost": true,
+  "packageVerification": "../../dist/verification-0.3.0.json",
+  "packageVerificationNote": "Final package installation and checksum evidence is in the source delivery dist directory, outside the npm package.",
+  "clientBytes": 74699,
+  "clientLimitBytes": 262144,
+  "workerBytes": 29373,
+  "historicalWslAndPerformanceChecks": "summary-v020.json",
+  "uiRevision": "0.3.0",
+  "unifiedConversationUi": "ui-v030.json",
+  "simultaneousAuthenticatedHosts": true,
+  "windowsDraftRestoredAfterRoundTrip": true,
+  "linuxDraftRestoredAfterRoundTrip": true
+}

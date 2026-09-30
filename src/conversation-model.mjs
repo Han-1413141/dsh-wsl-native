@@ -1,0 +1,202 @@
+import { stored } from './client-session.mjs';
+import { readHandoff, appOrigin, DESKTOP_ORIGIN } from './handoff.mjs';
+import { acceptsMessage, catalogOf, cleanCatalog, conversationKey, embeddedUrl,
+  CONVERSATION_PANEL, CONVERSATION_PROTOCOL } from './conversation-protocol.mjs';
+
+export function createConversations(ctx, api, model) {
+  const entries = new Map(), requests = new Map(), lifetime = new AbortController();
+  let revision = 0, saveTimer, lastLocal;
+  const chat = {
+    entries, activeKey: null, error: null, busy: false, anchor: null,
+    unified: stored('unified-conversations', undefined, localStorage) !== false,
+    nativeCatalog: () => catalogOf(ctx),
+    visible: () => ctx.layout.panelInfo.getSnapshot().activePanelId === CONVERSATION_PANEL,
+    changed() { model.emit(); },
+    setUnified(value) {
+      chat.unified = value; stored('unified-conversations', value, localStorage); model.emit();
+    },
+    setAnchor(element) { chat.anchor = element; model.emit(); },
+    showWindows(sessionId) {
+      revision++; chat.error = null;
+      if (sessionId) ctx.uiWorkspace.openSession(sessionId);
+      else ctx.layout.selectPanel(null);
+      model.emit();
+    },
+    async openRow(row) {
+      if (!row.environment) return chat.showWindows(row.id);
+      const entry = entries.get(row.environment.key);
+      if (!entry?.ready) return chat.enter(entry.settings, { sessionId: row.id });
+      revision++; chat.activeKey = entry.key; chat.error = null;
+      ctx.layout.selectPanel(CONVERSATION_PANEL); model.emit();
+      try { await navigate(entry, { sessionId: row.id }); }
+      catch (error) { chat.error = error.message; model.emit(); }
+    },
+    async enter(settings, intent = {}) {
+      if (chat.busy) return;
+      const current = ++revision;
+      chat.busy = true; chat.error = null; model.emit();
+      try {
+        const result = await api('native/enter', { ...settings, parentOrigin: appOrigin(location.origin) });
+        let handoff;
+        const until = Date.now() + 10 * 60 * 1000;
+        while (!lifetime.signal.aborted && Date.now() < until) {
+          const state = await model.refresh();
+          handoff = state.handoffs.find(item => item.id === result.id);
+          if (handoff?.state === 'failed') throw new Error(handoff.error);
+          if (handoff?.state === 'ready') break;
+          await new Promise(resolve => setTimeout(resolve, 700));
+        }
+        if (lifetime.signal.aborted) return;
+        if (handoff?.state !== 'ready') throw new Error('Linux 启动仍未完成，请在环境面板查看进度。');
+        await chat.adopt(handoff, intent, current === revision);
+      } catch (error) { chat.error = error.message; }
+      finally { chat.busy = false; model.emit(); }
+    },
+    async adopt(handoff, intent = {}, select = true) {
+      const key = conversationKey(handoff.settings);
+      const origin = new URL(handoff.url).origin;
+      let entry = entries.get(key);
+      if (!entry || entry.origin !== origin) {
+        if ([...entries.values()].filter(item => item.url && item.key !== key).length >= 8)
+          throw new Error('同一窗口最多保持 8 个 Linux 环境。在对话菜单中关闭不用的环境页面后可继续打开，后台任务不受影响。');
+        if (entry) rejectRequests(entry, 'Linux 已重新启动，请重试这次操作。');
+        const channel = crypto.randomUUID();
+        entry = { key, settings: handoff.settings, origin, channel, catalog: entry?.catalog || null,
+          url: embeddedUrl(handoff.url, channel, location.origin), openUrl: handoff.url,
+          transport: appOrigin(location.origin) === DESKTOP_ORIGIN ? 'desktop' : 'iframe',
+          ready: false, compact: true, window: null, waiting: null, startedAt: Date.now() };
+        entries.set(key, entry);
+      } else { entry.settings = handoff.settings; entry.openUrl = handoff.url; }
+      entry.handoff = readHandoff(new URL(handoff.url).hash);
+      if (select) { chat.activeKey = key; ctx.layout.selectPanel(CONVERSATION_PANEL); }
+      const payload = { handoff: entry.handoff, ...intent };
+      if (entry.ready) await navigate(entry, payload);
+      else entry.waiting = payload;
+      save(); model.emit();
+    },
+    bind(entry, iframe) { entry.window = iframe?.contentWindow || null; },
+    desktopMessage(entry, message) { if (entries.get(entry.key) === entry) accept(entry, message); },
+    desktopError(entry, error) {
+      if (entries.get(entry.key) !== entry) return;
+      entry.ready = false; chat.error = error.message;
+      rejectRequests(entry, error.message); model.emit();
+    },
+    newWindows() { revision++; ctx.uiWorkspace.startSession(); model.emit(); },
+    async newLinux(entry) {
+      const settings = entry?.settings || model.state?.settings;
+      if (!settings?.distro) { ctx.layout.selectPanel('dsh-wsl-native'); return; }
+      const selected = entry?.catalog?.rows.find(row => row.id === entry.catalog.selectedId);
+      await chat.enter({ ...settings, directory: selected?.cwd || settings.directory }, { create: true });
+    },
+    async action(row, action) {
+      chat.error = null;
+      try {
+        if (row.environment) {
+          const entry = entries.get(row.environment.key);
+          if (!entry.ready) throw new Error('请先打开这条 WSL 对话，再执行操作。');
+          await request(entry, action, { sessionId: row.id });
+        } else {
+          const names = { pin: 'pinSession', unpin: 'unpinSession', archive: 'archiveSession', unarchive: 'unarchiveSession' };
+          if (!names[action]) throw new Error('对话操作无效。');
+          await ctx.uiWorkspace[names[action]](row.id);
+        }
+      } catch (error) { chat.error = error.message; }
+      model.emit();
+    },
+    toggleChrome(entry) {
+      entry.compact = !entry.compact;
+      void request(entry, 'chrome', { compact: entry.compact }).catch(error => { chat.error = error.message; model.emit(); });
+      model.emit();
+    },
+    closeView(entry) {
+      rejectRequests(entry, '这个环境的页面已关闭，后台任务继续运行。');
+      if (chat.activeKey === entry.key) chat.showWindows();
+      delete entry.url; entry.window = null; entry.ready = false; entry.origin = null;
+      entry.waiting = null; save(); model.emit();
+    },
+    reconnect(entry) { // A user-requested reload; never replay a message or a file operation.
+      rejectRequests(entry, '连接正在重新建立。');
+      entry.origin = null;
+      void chat.enter(entry.settings, entry.catalog?.selectedId ? { sessionId: entry.catalog.selectedId } : {});
+    },
+  };
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => stored('conversation-catalogs', [...entries.values()].map(entry => ({
+      key: entry.key, settings: entry.settings, catalog: entry.catalog,
+    }))), 200);
+  }
+  const cached = stored('conversation-catalogs');
+  for (const saved of (Array.isArray(cached) ? cached : []).slice(0, 8)) {
+    if (!saved?.settings?.distro || !saved?.settings?.directory || !cleanCatalog(saved.catalog)) continue;
+    const key = conversationKey(saved.settings);
+    entries.set(key, { key, settings: saved.settings, catalog: cleanCatalog(saved.catalog), ready: false, compact: true });
+  }
+  function request(entry, action, payload) {
+    if ((!entry.window && !entry.desktop) || !entry.ready) return Promise.reject(new Error('WSL 对话界面尚未连接，请稍后重试。'));
+    const id = crypto.randomUUID();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { requests.delete(id); reject(new Error('WSL 对话没有及时响应，请检查连接；操作不会自动重放。')); }, 30000);
+      requests.set(id, { entry, resolve, reject, timer });
+      if (entry.desktop) void entry.desktop.request(action, payload).then(
+        () => accept(entry, { type: 'result', id, ok: true }),
+        error => accept(entry, { type: 'result', id, ok: false, error: error.message }),
+      );
+      else entry.window.postMessage({ protocol: CONVERSATION_PROTOCOL, channel: entry.channel, type: 'request', id, action, payload }, entry.origin);
+    });
+  }
+  async function navigate(entry, payload) {
+    const id = crypto.randomUUID(); entry.navigating = id; model.emit();
+    try { await request(entry, 'navigate', payload); }
+    finally { if (entry.navigating === id) entry.navigating = null; model.emit(); }
+  }
+  function rejectRequests(entry, reason) {
+    for (const [id, pending] of requests) if (pending.entry === entry) {
+      clearTimeout(pending.timer); requests.delete(id); pending.reject(new Error(reason));
+    }
+  }
+  function theme(entry) {
+    const tokens = [...document.body.style].filter(name => /^--(?:ds|dsw|dsh)-/.test(name)).map(name => [name, document.body.style.getPropertyValue(name)]);
+    void request(entry, 'theme', { dark: document.body.hasAttribute('data-ds-dark-theme'), tokens }).catch(() => {});
+  }
+  const receive = event => {
+    const entry = [...entries.values()].find(item => acceptsMessage(event, { origin: item.origin, source: item.window, channel: item.channel }));
+    if (!entry) return;
+    accept(entry, event.data);
+  };
+  function accept(entry, message) {
+    if (message.type === 'catalog') {
+      const catalog = cleanCatalog(message.catalog); if (!catalog) return;
+      const first = !entry.ready;
+      entry.ready = true; entry.catalog = catalog; entry.lastSeen = Date.now();
+      if (first) theme(entry);
+      if (entry.waiting) {
+        const payload = entry.waiting; entry.waiting = null;
+        void navigate(entry, payload).catch(error => { chat.error = error.message; model.emit(); });
+      }
+      save(); model.emit();
+    } else if (message.type === 'result') {
+      const pending = requests.get(message.id);
+      if (!pending || pending.entry !== entry) return;
+      clearTimeout(pending.timer); requests.delete(message.id);
+      message.ok ? pending.resolve() : pending.reject(new Error(String(message.error || '操作失败。').slice(0, 1000)));
+    } else if (message.type === 'return') chat.showWindows();
+    else if (message.type === 'sidebar') ctx.layout.toggleSidebar();
+  }
+  window.addEventListener('message', receive);
+  const observer = new MutationObserver(() => { for (const entry of entries.values()) if (entry.ready) theme(entry); });
+  observer.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme', 'style'] });
+  const notifyLocal = () => {
+    const next = JSON.stringify(catalogOf(ctx));
+    if (next !== lastLocal) { lastLocal = next; model.emit(); }
+  };
+  const disposers = [ctx.sessions.list.subscribe(notifyLocal), ctx.workspaces.list.subscribe(notifyLocal),
+    ctx.layout.panelInfo.subscribe(() => { model.emit(); })];
+  chat.dispose = () => {
+    lifetime.abort(); observer.disconnect(); clearTimeout(saveTimer);
+    window.removeEventListener('message', receive);
+    for (const dispose of disposers) dispose();
+    for (const entry of entries.values()) rejectRequests(entry, '窗口已关闭。');
+  };
+  return chat;
+}
