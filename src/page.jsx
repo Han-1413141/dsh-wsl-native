@@ -765,11 +765,11 @@ export function WslPage({ api, ctx, model }) {
                 const action = dialog;
                 setDialog(null);
                 void task("stop", async () => {
+                  model.conversations.stopRecovery(action.kind === 'stop' ? action.settings : null);
                   await api(
                     action.kind === "stop" ? "native/stop" : "disconnect",
                     action.settings || {},
                   );
-                  model.conversations.stopRecovery(action.kind === 'stop' ? action.settings : null);
                   model.readyLink = null;
                   setNotice({
                     text:
