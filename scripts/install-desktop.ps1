@@ -35,10 +35,10 @@ foreach ($name in @('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'co
     if (Test-Path -LiteralPath $source -PathType Leaf) { Copy-Item -LiteralPath $source -Destination (Join-Path $backupDir $name) }
 }
 
-$packageDir = Join-Path $installHome 'dsh-wsl-native/packages'
+$sourceHash = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash
+$packageDir = Join-Path $installHome ('dsh-wsl-native/packages/' + $sourceHash.Substring(0, 16).ToLowerInvariant())
 New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
 $stablePackage = Join-Path $packageDir $packageName
-$sourceHash = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash
 if (Test-Path -LiteralPath $stablePackage) {
     if ((Get-FileHash -LiteralPath $stablePackage -Algorithm SHA256).Hash -ne $sourceHash) {
         throw "A different package with the same version already exists at $stablePackage. Use a new release version."
