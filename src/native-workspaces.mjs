@@ -63,11 +63,16 @@ export function installNativeWorkspaces(ctx, model) {
       if (add.parentElement !== header) header.append(add);
     } else { toggle.remove(); add.remove(); }
     for (const mark of marks) if (!mark.isConnected) marks.delete(mark);
-    for (const row of sidebar.querySelectorAll('[data-row-key^="workspace:dsh-wsl:"]')) {
-      if (row.querySelector('[data-dsh-wsl-owned]')) continue;
-      const mark = doc.createElement('span'); mark.dataset.dshWslOwned = ''; mark.className = 'dsh-wsl-workspace-mark'; mark.textContent = 'WSL';
-      const title = row.querySelector('[class*="projectText"]');
-      if (title) { title.after(mark); marks.add(mark); }
+    for (const [kind, titleClass] of [['workspace', 'projectText'], ['session', 'title']]) {
+      for (const row of sidebar.querySelectorAll(`[data-row-key^="${kind}:dsh-wsl:"]`)) {
+        if (row.querySelector(':scope > .dsh-wsl-workspace-mark')) continue;
+        const title = row.querySelector(`:scope > [class*="${titleClass}"]`);
+        if (!title) continue;
+        const mark = doc.createElement('span'); mark.dataset.dshWslOwned = '';
+        mark.className = 'dsh-wsl-workspace-mark' + (kind === 'session' ? ' dsh-wsl-session-mark' : '');
+        mark.textContent = 'WSL'; mark.title = kind === 'session' ? 'WSL 对话' : 'WSL 工作区';
+        title.after(mark); marks.add(mark);
+      }
     }
   }
   function schedule() { if (!disposed && !scheduled) scheduled = requestAnimationFrame(sync); }

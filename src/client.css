@@ -757,6 +757,7 @@ html[data-dsh-wsl-conversation] [data-rightbar-col] { visibility:hidden; pointer
 .dsh-wsl-new-pair.is-narrow button { flex:none; }
 .dsh-wsl-native-toggle { margin-right:auto; }
 .dsh-wsl-workspace-mark { flex:none; font:10px/16px var(--dsw-font-family); color:var(--dsw-alias-label-tertiary); border:1px solid var(--dsw-alias-border-l4); border-radius:4px; padding:0 4px; margin-left:5px; }
+.dsh-wsl-session-mark { margin-left:2px; margin-right:4px; white-space:nowrap; pointer-events:none; }
 .dsh-wsl-row-action { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; padding:0; border:0; border-radius:5px; color:var(--dsw-alias-label-secondary); background:transparent; cursor:pointer; }
 .dsh-wsl-row-action:hover { background:var(--dsw-alias-interactive-bg-hover); }
 .dsh-wsl-page .dsh-wsl-inheritance { padding:20px; }
