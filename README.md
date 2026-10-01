@@ -1,6 +1,6 @@
 # DSH for WSL
 
-在同一个 Windows DSH 窗口里使用 Windows 和原生 Linux 对话。WSL 对话带有标志，点击对话即可切换环境，保留各自的草稿和任务。包名为 `dsh-wsl-native`，当前版本为 **0.6.2**，适配 **DeepSeek Harness 0.2.0-rc.2**，支持 Windows Desktop 和 Windows Web。
+在同一个 Windows DSH 窗口里使用 Windows 和原生 Linux 对话。WSL 对话带有标志，点击对话即可切换环境，保留各自的草稿和任务。包名为 `dsh-wsl-native`，当前版本为 **0.6.3**，适配 **DeepSeek Harness 0.2.0-rc.2**，支持 Windows Desktop 和 Windows Web。
 
 [下载安装包](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) · [桌面端安装与使用](docs/desktop.md) · [完整手册](docs/usage.md) · [问题反馈](https://github.com/Han-1413141/dsh-wsl-native/issues)
 
@@ -19,11 +19,11 @@
 
 ### 安装到 Windows 桌面端
 
-从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.6.2.tgz`，保留在固定目录。在 PowerShell 中使用 **桌面端附带的 CLI** 安装；将下面的路径换成本机安装目录和包路径：
+从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.6.3.tgz`，保留在固定目录。在 PowerShell 中使用 **桌面端附带的 CLI** 安装；将下面的路径换成本机安装目录和包路径：
 
 ```powershell
 $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
-& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.6.2.tgz'
+& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.6.3.tgz'
 ```
 
 `desktop` 是桌面端配置，`web` 是另一个配置。已在 PATH 中配置桌面端 CLI 时，也可直接使用 `dsh plugin --profile desktop add ...`。安装后在桌面端查找 **WSL 与 Windows**；若当前窗口尚未显示入口，等当前任务结束后从托盘退出 DSH，再重新打开。
@@ -70,7 +70,7 @@ Windows 上的 `setup` 默认由 Windows npm 下载依赖，再由 Linux npm 离
 安装到需要使用的 DSH 配置：
 
 ```powershell
-dsh plugin --profile web add "C:\path\to\dsh-wsl-native-0.6.2.tgz"
+dsh plugin --profile web add "C:\path\to\dsh-wsl-native-0.6.3.tgz"
 dsh web
 ```
 
@@ -84,7 +84,7 @@ Windows 原有工具继续工作。插件增加的工具以 `wsl_native_` 开头
 
 ![Windows Web 同窗口 Windows 与 WSL 对话，0.3.0 实测截图](docs/assets/unified-conversations.png)
 
-上图是 0.3.0 的历史截图。0.6.2 已收起常驻搜索与筛选区，新增原生工作区切换按钮，并隐藏 Linux 的重复侧栏。
+上图是 0.3.0 的历史截图。0.6.3 已收起常驻搜索与筛选区，新增原生工作区切换按钮，并隐藏 Linux 的重复侧栏。
 
 ## 可以做什么
 

@@ -258,7 +258,7 @@ export class WslService {
       error = e.message;
     }
     return {
-      version: "0.6.2",
+      version: "0.6.3",
       host: process.platform,
       mode:
         process.platform === "win32"

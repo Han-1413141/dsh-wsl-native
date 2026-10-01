@@ -575,14 +575,18 @@ export function WslPage({ api, ctx, model }) {
                   icon={
                     busy === "connect" || busy === "switch" ? (
                       <StateDot state="ongoing" />
+                    ) : linuxConnection && !dirty ? (
+                      <StateDot state="done" />
                     ) : undefined
                   }
                 >
-                  {busy === "connect"
+                  {busy === "connect" || busy === "switch"
                     ? "正在连接…"
                     : dirty
                       ? "应用工作目录"
-                      : "连接 WSL"}
+                      : linuxConnection
+                        ? "已连接"
+                        : "连接 WSL"}
                 </Button>
                 {wslHost && (
                   <Button
