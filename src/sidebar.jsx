@@ -29,7 +29,6 @@ export function CompactConversationList({ ctx, model, wide, expandSidebar }) {
   if (!wide) return <div className="dsh-wsl-chat-rail"><Button variant="ghost" icon={<TerminalIcon size={18} />} aria-label="展开对话列表" onClick={expandSidebar} /></div>;
   const rows = conversationRows(local, chat.entries.values(), { filter, query, archived });
   const choose = action => { if (window.matchMedia('(max-width:600px)').matches) ctx.layout.toggleSidebar(); action(); };
-  const create = linux => { setArchived(false); setFilter('all'); setQuery(''); setLimit(35); setTools(null); choose(() => linux ? void chat.newLinux(chat.entries.get(chat.activeKey)) : chat.newWindows()); };
   const run = action => { const row = menu; setMenu(null); void chat.action(row, action); };
   return <section ref={section} className="dsh-wsl-conversations" aria-label="Windows 与 WSL 对话列表">
     <div className="dsh-wsl-compact-heading">
@@ -38,14 +37,14 @@ export function CompactConversationList({ ctx, model, wide, expandSidebar }) {
       <div className="dsh-wsl-heading-actions">
         <button type="button" className="dsh-wsl-icon-button" aria-label="搜索对话" title="搜索对话" aria-expanded={search} onClick={() => { setSearch(!search); if (search) setQuery(''); setTools(null); }}><Icon name="search" /></button>
         <button type="button" className="dsh-wsl-icon-button" aria-label="筛选对话" title="筛选与归档" aria-expanded={tools === 'filter'} onClick={() => setTools(tools === 'filter' ? null : 'filter')}><Icon name="filter" /></button>
-        <button type="button" className="dsh-wsl-icon-button" aria-label="新建环境对话" title="新建对话" aria-expanded={tools === 'new'} onClick={() => setTools(tools === 'new' ? null : 'new')}><Icon name="plus" /></button>
+        <button type="button" className="dsh-wsl-icon-button" aria-label="新建 WSL 工作区" title="新建 WSL 工作区" onClick={() => chat.requestWorkspace()}><Icon name="plus" /></button>
       </div>
     </div>
-    {tools && <div className="dsh-wsl-list-popover" role="group" aria-label={tools === 'filter' ? '对话筛选' : '选择新对话环境'}>
-      {tools === 'new' ? <><button type="button" onClick={() => create(false)}>Windows 新对话</button><button type="button" disabled={chat.busy} onClick={() => create(true)}>WSL 新对话</button></> : <>
+    {tools && <div className="dsh-wsl-list-popover" role="group" aria-label="对话筛选">
+      <>
         {[['all', '全部环境'], ['windows', 'Windows'], ['wsl', 'WSL']].map(([value, label]) => <button key={value} type="button" aria-pressed={filter === value} onClick={() => { setFilter(value); setLimit(35); setTools(null); }}>{label}{filter === value ? ' ✓' : ''}</button>)}
         <button type="button" className="dsh-wsl-menu-divider" aria-pressed={archived} onClick={() => { setArchived(!archived); setTools(null); }}>{archived ? '显示当前对话' : '显示已归档对话'}</button>
-      </>}
+      </>
     </div>}
     {search && <Input ref={searchRef} aria-label="搜索对话或工作目录" placeholder="搜索对话或目录" value={query} onChange={event => { setQuery(event.target.value); setLimit(35); }} onKeyDown={event => { if (event.key === 'Escape') { setQuery(''); setSearch(false); } }} />}
     {chat.error && <div className="dsh-wsl-chat-list-error" role="alert">{chat.error}</div>}
@@ -62,13 +61,14 @@ export function CompactConversationList({ ctx, model, wide, expandSidebar }) {
         </div>;
       })}
       {rows.length > limit && <Button variant="ghost" onClick={() => setLimit(limit + 35)}>显示更多（{rows.length - limit}）</Button>}
-      {!rows.length && <div className="dsh-wsl-chat-empty">{query ? '没有匹配的对话' : archived ? '没有已归档对话' : '点击右上角 ＋ 开始对话'}</div>}
+      {!rows.length && <div className="dsh-wsl-chat-empty">{query ? '没有匹配的对话' : archived ? '没有已归档对话' : '点击上方 Windows 或 WSL 开始对话'}</div>}
     </div>
     {chat.busy && <div className="dsh-wsl-chat-list-foot" role="status"><StateDot state="ongoing" />正在准备 WSL…</div>}
     <Modal open={!!menu} onClose={() => setMenu(null)} title={menu?.title || '管理对话'}>
       {menu && <div className="dsh-wsl-chat-menu"><p>{menu.environment ? `WSL · ${menu.environment.settings.distro}` : 'Windows'} · {menu.cwd}</p>
         {!menu.archived && <Button onClick={() => run(menu.pinned ? 'unpin' : 'pin')}>{menu.pinned ? '取消置顶' : '置顶对话'}</Button>}
         <Button onClick={() => run(menu.archived ? 'unarchive' : 'archive')}>{menu.archived ? '恢复对话' : '归档对话'}</Button>
+        {!menu.archived && <Button onClick={() => { chat.requestHandoff({ id: menu.id, row: menu, entry: menu.environment || null }); setMenu(null); }}>交接工作…</Button>}
         {menu.environment?.url && <Button variant="ghost" onClick={() => { chat.closeView(menu.environment); setMenu(null); }}>关闭环境页面（保留后台任务）</Button>}
       </div>}
     </Modal>

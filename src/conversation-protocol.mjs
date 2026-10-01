@@ -39,7 +39,7 @@ export function acceptsMessage(event, { origin, source, channel }) {
     ['catalog', 'request', 'result', 'return', 'sidebar'].includes(event.data.type);
 }
 
-// Only navigation metadata crosses the boundary. Prompts, credentials and files stay in their host.
+// Catalogs contain bounded navigation metadata, never prompts, credentials or files.
 export function cleanCatalog(value) {
   if (!value || !Array.isArray(value.rows) || value.rows.length > 5000) return null;
   const seen = new Set();
@@ -52,7 +52,22 @@ export function cleanCatalog(value) {
       running: row.running === true, blank: row.blank === true, pinned: row.pinned === true,
       archived: row.archived === true, updatedAt: Number.isFinite(row.updatedAt) ? row.updatedAt : 0 });
   }
-  return { rows, selectedId: rows.some(row => row.id === value.selectedId) ? value.selectedId : null,
+  const workspaceIds = new Set();
+  const workspaces = [];
+  for (const workspace of (Array.isArray(value.workspaces) ? value.workspaces : []).slice(0, 2048)) {
+    if (!workspace || typeof workspace.workspaceId !== 'string' || !workspace.workspaceId || workspace.workspaceId.length > 200 || workspaceIds.has(workspace.workspaceId)) continue;
+    workspaceIds.add(workspace.workspaceId);
+    workspaces.push({ workspaceId: workspace.workspaceId, path: text(workspace.path, 4096), title: text(workspace.title, 500),
+      sessionIds: [...new Set((Array.isArray(workspace.sessionIds) ? workspace.sessionIds : []).filter(id => seen.has(id)))],
+      createdAt: text(workspace.createdAt, 100), updatedAt: text(workspace.updatedAt, 100) });
+  }
+  // Older guests do not send empty workspaces. Preserve their existing navigation until upgraded.
+  for (const row of rows) if (row.workspaceId && !workspaceIds.has(row.workspaceId)) {
+    workspaceIds.add(row.workspaceId);
+    workspaces.push({ workspaceId: row.workspaceId, path: row.cwd, title: row.workspaceTitle,
+      sessionIds: rows.filter(item => item.workspaceId === row.workspaceId).map(item => item.id), createdAt: '', updatedAt: '' });
+  }
+  return { rows, workspaces, selectedId: rows.some(row => row.id === value.selectedId) ? value.selectedId : null,
     connected: value.connected === true, phase: value.phase === 'ready' ? 'ready' : 'loading' };
 }
 
@@ -66,6 +81,7 @@ export function catalogOf(ctx) {
   const pinned = new Set(workspaces.pinnedSessionIds || []);
   const rows = sessions.ids.map(id => sessions.byId[id]).filter(row => row && !row.parentId).slice(0, 5000);
   return cleanCatalog({ phase: sessions.phase, connected: ctx.connection.state.getSnapshot() === 'connected',
+    workspaces: workspaces.items,
     selectedId: rows.find(row => row.retainedBy?.mainView > 0)?.id,
     rows: rows.map(row => ({ id: row.id, title: row.title || (row.blank ? '新对话' : row.displayTitle),
       cwd: row.cwd, workspaceId: owners.get(row.id)?.workspaceId,

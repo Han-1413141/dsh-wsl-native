@@ -98,6 +98,15 @@ test('工作进程并发请求、文件冲突与二进制分块', async t => {
       await rpc.call('file.write', { path: file, content: '', expectedHash: first.sha256 });
       assert.equal((await rpc.call('file.read', { path: file })).content, '');
     });
+    await t.test('新建目录保留中文名称，拒绝越级路径和已有目录', async () => {
+      const name = '中文 WSL 工作区', destination = path.join(dir, name);
+      try {
+        assert.equal((await rpc.call('directory.create', { parent: dir, name })).path, destination);
+        await assert.rejects(rpc.call('directory.create', { parent: dir, name }), { code: 'EEXIST' });
+        for (const invalid of ['../outside', '..', 'a/b', 'a\\b', '', ' x '])
+          await assert.rejects(rpc.call('directory.create', { parent: dir, name: invalid }), { code: 'INVALID_ARGUMENT' });
+      } finally { await fs.rmdir(destination).catch(() => {}); }
+    });
     await t.test('二进制分块、校验失败清理与提交', async () => {
       const data = randomBytes(400123), file = path.join(dir, 'binary.bin');
       let tx = await rpc.call('transfer.begin', { path: file, expectedHash: 'absent' });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives';
+import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives';
 
 export function InheritanceSection({ state, model, chosen, task, api, disabled }) {
   const inheritance = state.native?.inheritance;
@@ -10,7 +10,7 @@ export function InheritanceSection({ state, model, chosen, task, api, disabled }
     <div className="dsh-wsl-card dsh-wsl-inheritance">
       <p>默认沿用主环境。在 Linux 中单独修改的项目会保留，后续同步只更新仍跟随主环境的部分。</p>
       <div className="dsh-wsl-inherit-options">
-        {[['plugins', '继承插件'], ['config', '继承设置'], ['credentials', '继承模型账号']].map(([key, label]) => <label key={key}><input type="checkbox" checked={options[key]} disabled={disabled} onChange={event => void task('inheritance', () => api('native/inheritance', { ...chosen(), options: { [key]: event.target.checked } }))} />{label}</label>)}
+        {[['plugins', '插件', '沿用主环境安装的插件'], ['config', '设置', '沿用主环境的偏好设置'], ['credentials', '模型账号', '沿用主环境登录的账号']].map(([key, label, description]) => <div className="dsh-wsl-inherit-option" key={key}><div><strong>{label}</strong><small>{description}</small></div><Switch checked={options[key]} disabled={disabled} label={`继承${label}`} onChange={checked => void task('inheritance', () => api('native/inheritance', { ...chosen(), options: { [key]: checked } }))} /></div>)}
       </div>
       <div className="dsh-wsl-inherit-actions"><Button variant="outline" disabled={disabled || !chosen().distro} onClick={() => void model.conversations.enter(chosen(), { panel: 'plugins' })}>管理 Linux 插件与设置</Button>
         <span className="dsh-wsl-caption">更改继承选项后，下次启动 Linux 生效。</span></div>

@@ -1,6 +1,8 @@
 import { acceptsMessage, catalogOf, CONVERSATION_PROTOCOL } from './conversation-protocol.mjs';
 import { openProject } from './client-session.mjs';
 import { createDesktopMailbox, DESKTOP_MAILBOX } from './desktop-mailbox.mjs';
+import { workspaceCommand } from './workspace-commands.mjs';
+import { createWorkHandoff } from './work-handoff.mjs';
 
 // Called only after environment/adopt has verified the launcher's signed handoff.
 export function startConversationGuest(ctx, model, api, embed) {
@@ -8,6 +10,7 @@ export function startConversationGuest(ctx, model, api, embed) {
   if ((!desktop && window.parent === window) || model.guest) return;
   let timer, lastCatalog = '', stopped = false;
   let navigation = new AbortController();
+  const handoff = createWorkHandoff(ctx);
   const endpoint = { origin: embed.parentOrigin, source: window.parent, channel: embed.channel };
   const mailbox = desktop ? createDesktopMailbox(embed.channel, command) : null;
   if (mailbox) Object.defineProperty(window, DESKTOP_MAILBOX, { value: mailbox.api, configurable: true });
@@ -29,6 +32,7 @@ export function startConversationGuest(ctx, model, api, embed) {
   };
   document.documentElement.setAttribute('data-dsh-wsl-guest', '');
   async function command(action, payload = {}) {
+    if (action === 'handoff.read' || action === 'handoff.deliver') { const value = await handoff(action, payload); publish(true); return value; }
     if (action === 'refresh') { publish(true); return; }
     if (action === 'theme') {
       document.body.toggleAttribute('data-ds-dark-theme', payload.dark === true);
@@ -58,24 +62,21 @@ export function startConversationGuest(ctx, model, api, embed) {
         if (payload.create) {
           const workspace = await ctx.workspaces.create({ path: result.settings.directory });
           if (signal.aborted) return;
-          const id = await ctx.sessions.create({ workspaceId: workspace.workspaceId });
-          if (!signal.aborted) ctx.uiWorkspace.openSession(id);
+          if (!signal.aborted) await ctx.uiWorkspace.openWorkspace(workspace.workspaceId);
         } else await openProject(ctx, result.settings.directory, signal);
       }
       publish(true); return;
     }
-    const actions = { pin: 'pinSession', unpin: 'unpinSession', archive: 'archiveSession', unarchive: 'unarchiveSession' };
-    if (!actions[action] || !ctx.sessions.list.getSnapshot().byId[payload.sessionId])
-      throw new Error('对话操作无效。');
-    await ctx.uiWorkspace[actions[action]](payload.sessionId);
+    const value = await workspaceCommand(ctx, action, payload);
     publish(true);
+    return value;
   }
   const receive = event => {
     if (!acceptsMessage(event, endpoint) || event.data.type !== 'request') return;
     const { id, action, payload } = event.data;
     if (typeof id !== 'string' || id.length > 100 || typeof action !== 'string') return;
     void command(action, payload).then(
-      () => send('result', { id, ok: true }),
+      value => send('result', { id, ok: true, value }),
       error => send('result', { id, ok: false, error: String(error.message).slice(0, 1000) }),
     );
   };

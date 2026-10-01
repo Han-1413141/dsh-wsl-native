@@ -398,6 +398,15 @@ const handlers = {
           : "other";
     return { path: resolved, storage };
   },
+  "directory.create": async (p, signal) => {
+    aborted(signal);
+    ensure(typeof p.name === 'string' && p.name.trim() === p.name && p.name.length > 0 && Buffer.byteLength(p.name) <= 255 &&
+      !['.', '..'].includes(p.name) && !/[\\/\x00-\x1f]/.test(p.name), 'INVALID_ARGUMENT', '文件夹名称无效。');
+    const parent = await fs.realpath(absolute(p.parent));
+    const destination = path.join(parent, p.name);
+    await fs.mkdir(destination);
+    return { path: destination };
+  },
   exec: (p, signal) => execution(p, signal),
   "path.convert": async (p, signal) => {
     ensure(!win, "WRONG_HOST", "路径转换在 WSL 中执行。");

@@ -108,7 +108,10 @@ Linux 插件完成签名验证后，暴露只读的 `__DSH_WSL_DESKTOP_V1__` 接
 | `src/launcher.mjs`、`src/install-cache.mjs` | 安装、缓存下载、启动与停止 |
 | `src/routes.mjs` | 管理接口 |
 | `src/inheritance.mjs`、`src/inheritance-ui.jsx` | 插件和配置继承、差异保留与管理入口 |
-| `src/native-workspaces.mjs`、`src/sidebar.jsx` | 原生工作区 WSL 分组、紧凑列表和切换按钮 |
+| `src/native-sidebar.jsx`、`src/workspace-projection.mjs` | 复用原生列表，投影跨环境 ID 与联合排序，分派操作 |
+| `src/native-workspaces.mjs`、`src/sidebar.jsx` | 头部按钮、WSL 标志与可选紧凑列表 |
+| `src/workspace-commands.mjs`、`src/workspace-dialogs.jsx` | 固定的 Linux 工作区操作、创建和对话管理 |
+| `src/work-handoff.mjs`、`src/handoff-dialog.jsx` | 双向交接、摘录预览、草稿保留与防重复提交 |
 | `src/client.jsx`、`src/page.jsx`、`src/components.jsx`、`src/client.css` | 原生侧边栏页面、目录弹窗与主题样式 |
 | `src/client-session.mjs` | 页面状态、工作区打开和会话恢复 |
 | `src/conversations.jsx`、`src/conversation-model.mjs` | 统一对话列表、常驻页面、导航与页面生命周期 |
@@ -119,3 +122,13 @@ Linux 插件完成签名验证后，暴露只读的 `__DSH_WSL_DESKTOP_V1__` 接
 | `src/cli.mjs`、`bin/dsh-wsl.mjs` | 命令行入口 |
 
 客户端产物保留在 `lib/client.js`，工作进程产物保留在 `lib/worker.mjs`。发布包无需在用户机器上现场构建。
+
+## 原生工作区与工作交接
+
+侧栏复用已注册的 DSH WorkspaceBrowser、视图 store 和本地化。子插槽在插件自有命名空间镜像注册，保留原有组件和业务注入，不改写 DSH 的原始注册或 Windows 工作区数据。Windows 回调保留原实现；WSL 的虚拟 ID 只用于侧栏，发往 Linux 前还原真实 ID。工作区拖动保存联合显示顺序，并把同环境的相对顺序写回官方 workspaces 接口。
+
+目录创建通过认证控制路由调用常驻 Linux 工作进程。文件夹名只允许一个路径片段，拒绝越级路径与已有目录，不把用户输入拼进 shell 命令。
+
+目录与会话目录清单只交换导航信息。用户主动选择“带入最近对话”时，才读取最近 8 条已提交的 user/assistant 文字消息，上限 18,000 字符。工具输出、附件、推理内容和账号配置不进入摘录。最终交接文本上限 24,000 字符。
+
+交接草稿通过 DSH conversation.input 接口写入，拒绝覆盖已有草稿、附件或正在提交的输入。直接发送调用 session.prompt 的 queue 模式，沿用目标模型与执行权限。每次交接使用独立 ID；进行中的请求合并，结果留有本地回执。发送结果不明时保留待确认标记，不自动重放。

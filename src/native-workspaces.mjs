@@ -11,91 +11,65 @@ export function remoteWorkspaceGroups(environments, query = '') {
   return [...groups.values()].sort((a, b) => Number(b.rows.some(r => r.running)) - Number(a.rows.some(r => r.running)) || a.title.localeCompare(b.title));
 }
 
-// DSH 0.2.0-rc.2 has no additive header/tree slot. These two owned nodes extend
-// its existing workspace DOM; the native renderer and workspace data remain intact.
+// Only header affordances and badges need DOM augmentation: the tree itself
+// is rendered by DSH. Every owned node and attribute is removed on disposal.
 export function installNativeWorkspaces(ctx, model) {
-  const doc = document, collapsed = new Set(), limits = new Map();
-  let frame, sidebar, observer, scheduled, disposed = false, signature = '', lastInput;
-  const toggle = doc.createElement('button'), mount = doc.createElement('div');
-  toggle.type = 'button'; toggle.className = 'dsh-wsl-icon-button dsh-wsl-native-toggle';
-  toggle.setAttribute('aria-label', '切换到紧凑对话列表'); toggle.title = '切换到紧凑对话列表';
-  const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  for (const [key, value] of Object.entries({ width: '15', height: '15', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) svg.setAttribute(key, value);
-  const icon = doc.createElementNS(svg.namespaceURI, 'path'); icon.setAttribute('d', 'M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4'); svg.append(icon); toggle.append(svg);
-  toggle.addEventListener('click', () => model.conversations.setUnified(true));
-  mount.className = 'dsh-wsl-native-projects'; mount.setAttribute('role', 'group'); mount.setAttribute('aria-label', 'WSL 工作区');
-  const button = (label, className, onClick) => {
-    const node = doc.createElement('button'); node.type = 'button'; node.className = className; node.textContent = label;
-    node.addEventListener('click', event => { event.stopPropagation(); onClick(); }); return node;
+  const doc = document;
+  let observer, sidebar, scheduled, disposed = false, originalButton;
+  const button = (label, cls, icon, action) => {
+    const node = doc.createElement('button'); node.type = 'button'; node.className = cls;
+    node.title = label; node.setAttribute('aria-label', label);
+    const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    for (const [key, value] of Object.entries({ width: '16', height: '16', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) svg.setAttribute(key, value);
+    const path = doc.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', icon); svg.append(path); node.append(svg);
+    node.addEventListener('click', action); return node;
   };
-  function render(groups) {
-    const next = JSON.stringify([groups.map(g => [g.key, g.title, g.path, g.rows.map(r => [r.id, r.title, r.running, r.pinned]), g.environment.ready]), model.conversations.activeKey, model.conversations.visible(), [...collapsed], [...limits], groups.map(g=>g.environment.catalog?.selectedId)]);
-    if (signature === next) return; signature = next;
-    const fragment = doc.createDocumentFragment();
-    for (const group of groups) {
-      const section = doc.createElement('div'); section.setAttribute('role', 'treeitem');
-      const expanded = !collapsed.has(group.key); section.setAttribute('aria-expanded', String(expanded));
-      const title = button('', 'dsh-wsl-native-project', () => { expanded ? collapsed.add(group.key) : collapsed.delete(group.key); render(groups); });
-      title.title = `WSL · ${group.environment.settings.distro} · ${group.path}`;
-      title.setAttribute('aria-label', `${expanded ? '收起' : '展开'} WSL 工作区 ${group.title}`);
-      const arrow = doc.createElement('span'); arrow.textContent = expanded ? '⌄' : '›'; arrow.setAttribute('aria-hidden', 'true');
-      const name = doc.createElement('span'); name.className = 'dsh-wsl-native-title'; name.textContent = group.title;
-      const mark = doc.createElement('span'); mark.className = 'dsh-wsl-chat-mark'; mark.textContent = 'WSL';
-      title.append(arrow, name, mark); section.append(title);
-      if (expanded) {
-        const list = doc.createElement('div'); list.setAttribute('role', 'group'); const limit = limits.get(group.key) || 5;
-        for (const row of group.rows.slice(0, limit)) {
-          const selected = model.conversations.visible() && model.conversations.activeKey === group.environment.key && group.environment.catalog.selectedId === row.id;
-          const node = button('', `dsh-wsl-native-session${selected ? ' is-selected' : ''}`, () => {
-            if (window.matchMedia('(max-width:600px)').matches) ctx.layout.toggleSidebar();
-            void model.conversations.openRow(row);
-          });
-          node.setAttribute('role', 'treeitem'); node.setAttribute('aria-selected', String(selected)); node.setAttribute('aria-label', `WSL 对话：${row.title}`);
-          node.title = `${row.title}\n${group.environment.settings.distro} · ${row.cwd}${group.environment.ready ? '' : '\n点击连接环境'}`;
-          const dot = doc.createElement('span'); dot.className = `dsh-wsl-native-status${row.running ? ' is-running' : ''}`; dot.textContent = row.running ? '◌' : row.pinned ? '•' : '';
-          const text = doc.createElement('span'); text.textContent = row.title || '新对话'; node.append(dot, text); list.append(node);
-        }
-        if (group.rows.length > limit) list.append(button(`展开其余 ${group.rows.length - limit} 个 WSL 对话`, 'dsh-wsl-native-more', () => { limits.set(group.key, limit + 20); render(groups); }));
-        section.append(list);
-      }
-      fragment.append(section);
-    }
-    mount.replaceChildren(fragment); mount.hidden = !groups.length;
-  }
+  const toggle = button('切换到紧凑对话列表', 'dsh-wsl-icon-button dsh-wsl-native-toggle', 'M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4', () => model.conversations.setUnified(true));
+  const add = button('新建 WSL 工作区', 'dsh-wsl-icon-button', 'M3 7V5h6l2 2h10v13H3V7m9 4v6m-3-3h6', () => model.conversations.requestWorkspace());
+  add.dataset.dshWslOwned = '';
+  const pair = doc.createElement('div'); pair.className = 'dsh-wsl-new-pair'; pair.dataset.dshWslOwned = '';
+  const win = button('新建 Windows 对话', 'dsh-wsl-new-windows', 'M3 4h18v13H3zM8 21h8m-4-4v4', () => model.conversations.newWindows());
+  const linux = button('新建 WSL 对话', 'dsh-wsl-new-linux', 'M3 5h18v14H3zM7 9l3 3-3 3m6 0h4', () => void model.conversations.newLinux(model.conversations.entries.get(model.conversations.activeKey)));
+  for (const [node, label] of [[win, 'Windows'], [linux, 'WSL']]) { const span = doc.createElement('span'); span.textContent = label; node.append(span); }
+  pair.append(win, linux);
+  const marks = new Set();
   function sync() {
-    scheduled = null;
-    if (disposed) return;
-    const enabled = model.state?.mode === 'windows-host' && !model.conversations.unified;
-    if (!enabled) { toggle.remove(); mount.remove(); return; }
-    const overlay = doc.querySelector('[data-shell-overlay]');
-    const nextFrame = overlay?.parentElement;
-    const right = nextFrame?.querySelector(':scope > [data-rightbar-col]');
+    scheduled = null; if (disposed) return;
+    if (model.state?.mode !== 'windows-host') return;
+    const frame = doc.querySelector('[data-shell-overlay]')?.parentElement;
+    const right = frame?.querySelector(':scope > [data-rightbar-col]');
     const nextSidebar = right?.previousElementSibling?.previousElementSibling;
     if (!nextSidebar) return;
     if (sidebar !== nextSidebar) {
-      observer?.disconnect(); frame = nextFrame; sidebar = nextSidebar;
+      observer?.disconnect(); sidebar = nextSidebar;
       observer = new MutationObserver(records => {
-        if (records.some(r => [...r.removedNodes].some(n => (n === mount || n === toggle) && !n.isConnected) ||
-          (!mount.contains(r.target) && r.target !== toggle &&
-          [...r.addedNodes, ...r.removedNodes].some(n => n !== mount && n !== toggle)))) schedule();
+        if (records.some(record => !record.target.closest?.('[data-dsh-wsl-owned]') && [...record.addedNodes, ...record.removedNodes].some(node => !node.dataset || !('dshWslOwned' in node.dataset)))) schedule();
       });
-      observer.observe(sidebar, { childList: true, subtree: true });
+      observer.observe(sidebar, { subtree: true, childList: true });
     }
+    const nativeButton = sidebar.querySelector('button[class*="newSession"]');
+    if (nativeButton) {
+      if (originalButton !== nativeButton) { originalButton?.removeAttribute('data-dsh-wsl-replaced'); originalButton = nativeButton; }
+      nativeButton.setAttribute('data-dsh-wsl-replaced', '');
+      if (pair.previousElementSibling !== nativeButton) nativeButton.after(pair);
+      pair.classList.toggle('is-narrow', nativeButton.parentElement.getBoundingClientRect().width < 160);
+    }
+    linux.disabled = model.conversations.busy;
     const header = sidebar.querySelector('[class*="sectionHeader"]');
-    if (!header) { toggle.remove(); mount.remove(); return; }
-    const label = header.querySelector(':scope > span');
-    if (toggle.parentElement !== header) label ? label.after(toggle) : header.prepend(toggle);
-    const input = header.querySelector('input');
-    if (input !== lastInput) { lastInput?.removeEventListener('input', schedule); lastInput = input; input?.addEventListener('input', schedule); }
-    const tree = header.parentElement.querySelector('[role="tree"]');
-    if (tree && mount.parentElement !== tree) tree.prepend(mount);
-    if (!tree) mount.remove();
-    render(remoteWorkspaceGroups(model.conversations.entries.values(), input?.value || ''));
+    if (header && !model.conversations.unified) {
+      const label = header.querySelector(':scope > span');
+      if (toggle.parentElement !== header) label ? label.after(toggle) : header.prepend(toggle);
+      if (add.parentElement !== header) header.append(add);
+    } else { toggle.remove(); add.remove(); }
+    for (const mark of marks) if (!mark.isConnected) marks.delete(mark);
+    for (const row of sidebar.querySelectorAll('[data-row-key^="workspace:dsh-wsl:"]')) {
+      if (row.querySelector('[data-dsh-wsl-owned]')) continue;
+      const mark = doc.createElement('span'); mark.dataset.dshWslOwned = ''; mark.className = 'dsh-wsl-workspace-mark'; mark.textContent = 'WSL';
+      const title = row.querySelector('[class*="projectText"]');
+      if (title) { title.after(mark); marks.add(mark); }
+    }
   }
   function schedule() { if (!disposed && !scheduled) scheduled = requestAnimationFrame(sync); }
-  const unsubscribe = model.subscribe(schedule);
-  // Initial refresh occurs after the shell mounts; observe only our sidebar thereafter.
-  const stopSlots = ctx.slots.subscribe('sidebar.workspaces', schedule);
-  schedule();
-  return () => { disposed = true; cancelAnimationFrame(scheduled); observer?.disconnect(); lastInput?.removeEventListener('input', schedule); unsubscribe(); stopSlots(); toggle.remove(); mount.remove(); };
+  const off = model.subscribe(schedule), offSlots = ctx.slots.subscribe('sidebar.workspaces', schedule); schedule();
+  return () => { disposed = true; cancelAnimationFrame(scheduled); observer?.disconnect(); off(); offSlots(); originalButton?.removeAttribute('data-dsh-wsl-replaced'); pair.remove(); toggle.remove(); add.remove(); for (const mark of marks) mark.remove(); };
 }

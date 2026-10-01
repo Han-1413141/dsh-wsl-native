@@ -251,7 +251,7 @@ export function WslPage({ api, ctx, model }) {
       {!wslHost && <div className="dsh-wsl-unified-setting">
         <span>Windows 与 WSL 对话显示在同一个列表，切换对话即可切换环境。</span>
         <Button variant="ghost" onClick={() => model.conversations.setUnified(!model.conversations.unified)}>
-          {model.conversations.unified ? '使用原生工作区列表' : '启用同窗口对话列表'}
+          {model.conversations.unified ? '使用原生工作区列表' : '切换到紧凑对话列表'}
         </Button>
       </div>}
       {statusText && (

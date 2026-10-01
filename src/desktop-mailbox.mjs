@@ -1,5 +1,5 @@
 export const DESKTOP_MAILBOX = '__DSH_WSL_DESKTOP_V1__';
-const actions = new Set(['refresh', 'theme', 'chrome', 'navigate', 'pin', 'unpin', 'archive', 'unarchive']);
+import { CONVERSATION_ACTIONS as actions } from './workspace-commands.mjs';
 
 // A capability-scoped, change-driven mailbox inside the owned Linux webview.
 // It is installed only after the Linux host verifies the signed workspace handoff.
@@ -18,7 +18,7 @@ export function createDesktopMailbox(channel, command, { waitMs = 20000 } = {}) 
         authorize(key);
         if (!actions.has(action) || !payload || typeof payload !== 'object' || Array.isArray(payload) ||
             JSON.stringify(payload).length > 131072) throw new Error('WSL 页面操作无效。');
-        try { await command(action, payload); return { ok: true }; }
+        try { const value = await command(action, payload); return value === undefined ? { ok: true } : { ok: true, value }; }
         catch (error) { return { ok: false, error: String(error?.message || error).slice(0, 1000) }; }
       },
       next(key, after = 0) {

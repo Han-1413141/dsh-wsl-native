@@ -203,6 +203,10 @@ export function createController(
         handoffs.clear();
         return { disconnected: true };
       }
+      if (route === "directory/create") {
+        const { settings } = await service.resolveEnvironment({ distro: p.distro, user: p.user, directory: p.parent }, signal);
+        return service.call('wsl', 'directory.create', { parent: settings.directory, name: p.name }, { distro: settings.distro, user: settings.user, signal });
+      }
       if (route === "browse")
         return service.files(
           "wsl",
@@ -344,6 +348,7 @@ export function registerControlRoutes(connection, controller) {
     "connect",
     "disconnect",
     "browse",
+    "directory/create",
     "open",
     "native/enter",
     "native/inheritance",

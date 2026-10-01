@@ -40,6 +40,7 @@ export function mountDesktopView({ host, entry, bridge, onMessage, onError, crea
     async request(action, payload) {
       const result = await invoke('request', action, payload);
       if (!result?.ok) throw new Error(result?.error || 'WSL 页面尚未连接。');
+      return result.value;
     },
     dispose() {
       if (disposed) return;

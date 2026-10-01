@@ -1,6 +1,6 @@
 # Windows 桌面端安装与使用
 
-`dsh-wsl-native` 0.5.0 让 Windows DSH 和 WSL 中完整的 Linux DSH 共用一个桌面窗口、一个对话列表。WSL 对话带 `WSL` 标志；点击不同对话即可切换。Windows 对话继续使用 Windows，WSL 对话使用 Linux 原生 Bash、文件系统与工作区。
+`dsh-wsl-native` 0.6.0 让 Windows DSH 和 WSL 中完整的 Linux DSH 共用一个桌面窗口、一个对话列表。WSL 对话带 `WSL` 标志；点击不同对话即可切换。Windows 对话继续使用 Windows，WSL 对话使用 Linux 原生 Bash、文件系统与工作区。
 
 ## 安装条件
 
@@ -13,13 +13,13 @@
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.5.0.tgz`，保存到固定位置。发布页附有 `SHA256SUMS`；可用 `Get-FileHash -Algorithm SHA256` 核对包文件。
+从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.6.0.tgz`，保存到固定位置。发布页附有 `SHA256SUMS`；可用 `Get-FileHash -Algorithm SHA256` 核对包文件。
 
 使用桌面端安装目录内的 `resources\runtime\cli\bin\dsh.cmd`。下面以 `F:\deepseek harness` 为例，请换成本机实际目录：
 
 ```powershell
 $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
-& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.5.0.tgz'
+& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.6.0.tgz'
 & $dshDesktop plugin --profile desktop list --depth 0
 ```
 
@@ -33,7 +33,7 @@ $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 
 ```powershell
 .\scripts\install-desktop.ps1 `
-  -PackagePath 'C:\Downloads\dsh-wsl-native-0.5.0.tgz' `
+  -PackagePath 'C:\Downloads\dsh-wsl-native-0.6.0.tgz' `
   -DshCommand 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 ```
 
@@ -55,16 +55,20 @@ $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 
 | 操作 | 用途 |
 | --- | --- |
-| Windows ＋ | 创建 Windows 对话 |
-| WSL ＋ | 在当前 Linux 项目创建对话 |
+| 顶部 Windows 按钮 | 创建 Windows 对话 |
+| 顶部 WSL 按钮 | 在当前 Linux 项目创建对话 |
 | 筛选图标 | 按全部／Windows／WSL 筛选，或查看归档 |
 | 搜索 | 按标题、项目路径或发行版找对话 |
-| 对话菜单 | 置顶、归档、恢复或关闭环境页面 |
+| WSL 工作区右侧菜单 | 重命名、移除工作区；目录与会话记录保留 |
+| 对话菜单 | 置顶、重命名、分支、归档、恢复、交接工作 |
+| 新建 WSL 工作区 | 选择现有目录或创建新文件夹 |
 | Linux 配置 | 直接打开 Linux 原生插件管理，完成后返回对话 |
 | 标题右侧切换按钮 | 在原生工作区与紧凑对话列表之间切换 |
 | 新窗口打开 | 使用独立浏览器窗口查看 Linux DSH |
 
 同一窗口最多保留 8 个 Linux 环境页面。关闭某个环境的页面释放页面占用；停止环境才会结束它的 Linux DSH。退出管理它的 Windows DSH 也会结束所属 Linux 实例。不同环境的会话各自运行和保存，切换不会迁移正在生成的模型上下文。
+
+完整的工作区操作和双向交接示例见[工作区与交接](workspaces.md)。
 
 ## 与 Windows 互动
 

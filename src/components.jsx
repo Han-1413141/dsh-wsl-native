@@ -104,12 +104,14 @@ function DirectoryPicker({
   initialPath,
   onClose,
   onSelect,
+  allowCreate = false,
 }) {
   const [listing, setListing] = useState(null);
   const [path, setPath] = useState(initialPath);
   const [hidden, setHidden] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [folderName, setFolderName] = useState(null);
   const request = useRef(0);
   const load = useCallback(
     async (destination, offset = 0, showHidden = false) => {
@@ -161,7 +163,7 @@ function DirectoryPicker({
       onClose={onClose}
       title="选择 Linux 文件夹"
       closeLabel="关闭文件夹选择"
-      description={`${distro} 中的目录，用作插件的默认工作目录。`}
+      description={`${distro} 中的 Linux 文件夹。`}
       className="dsh-wsl-picker"
       contentClassName="dsh-wsl-picker-content"
       footer={
@@ -228,6 +230,18 @@ function DirectoryPicker({
           显示隐藏项
         </label>
       </div>
+      {allowCreate && <div className="dsh-wsl-folder-create">
+        {folderName === null ? <Button size="sm" variant="ghost" disabled={loading || !listing || !!error} onClick={() => setFolderName('')}>＋ 新建文件夹</Button> :
+          <form className="dsh-wsl-pathbar" onSubmit={async event => {
+            event.preventDefault(); if (loading || !folderName.trim()) return;
+            setLoading(true); setError('');
+            try { const result = await api('directory/create', { distro, user, parent: listing.path, name: folderName.trim() }); setFolderName(null); await load(result.path, 0, hidden); }
+            catch (e) { setError(e.message); setLoading(false); }
+          }}>
+            <Input aria-label="新文件夹名称" value={folderName} placeholder="文件夹名称" maxLength={255} onChange={event => setFolderName(event.target.value)} />
+            <Button type="submit" disabled={loading || !folderName.trim()}>创建</Button><Button disabled={loading} onClick={() => setFolderName(null)}>取消</Button>
+          </form>}
+      </div>}
       <div
         className="dsh-wsl-folder-list"
         aria-label="文件夹列表"

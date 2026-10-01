@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Button, StateDot, IconPanelLeftOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives';
+import { Button, MenuItemButton, StateDot, IconPanelLeftOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives';
 import { TerminalIcon } from './components.jsx';
 import { useModel } from './page.jsx';
 import { CONVERSATION_PANEL } from './conversation-protocol.mjs';
@@ -7,6 +7,19 @@ import { appOrigin } from './handoff.mjs';
 import { mountDesktopView } from './desktop-view.mjs';
 import { CompactConversationList } from './sidebar.jsx';
 import { installNativeWorkspaces } from './native-workspaces.mjs';
+import { installNativeSidebar } from './native-sidebar.jsx';
+import { WorkspaceDialogs } from './workspace-dialogs.jsx';
+import { bindHandoffDraft } from './work-handoff.mjs';
+
+function HandoffDraftBinding({ ctx, sessionId, useStore, actions }) {
+  const draft = useStore(state => state.draft), latest = useRef(draft);
+  latest.current = draft;
+  useEffect(() => bindHandoffDraft(ctx, sessionId, {
+    getDraft: () => latest.current,
+    setDraft: text => { latest.current = text; actions.setDraft(text); },
+  }), [ctx, sessionId, actions]);
+  return null;
+}
 
 function WslMark({ distro, connected = true }) {
   return <span className={`dsh-wsl-chat-mark${connected ? '' : ' is-offline'}`} title={`WSL · ${distro || 'Linux'}`}><TerminalIcon size={12} />WSL</span>;
@@ -48,6 +61,7 @@ function ResidentFrame({ entry, model, visible, rect, ctx }) {
       <Button variant="ghost" icon={<IconPanelLeftOutlineRegular />} aria-label="展开或收起对话列表" title="展开或收起对话列表" onClick={() => ctx.layout.toggleSidebar()} />
       <WslMark distro={entry.settings.distro} connected={entry.catalog?.connected} /><span className="dsh-wsl-chat-context" title={selected?.cwd || entry.settings.directory}>{entry.settings.distro}<span> · {selected?.cwd?.split('/').filter(Boolean).at(-1) || 'Linux'}</span></span>
       <div className="dsh-wsl-chat-toolbar-actions"><Button variant="ghost" disabled={!entry.ready || chat.busy} onClick={() => void chat.newLinux(entry)}>新对话</Button>
+        <Button variant="ghost" disabled={!entry.ready || !selected} onClick={() => chat.requestHandoff({ entry, id: selected.id, row: selected })}>交接工作</Button>
         <Button variant="ghost" disabled={!entry.ready} title="管理 Linux 插件与配置" onClick={() => chat.toggleChrome(entry)}>{entry.configOpen ? '返回对话' : 'Linux 配置'}</Button></div>
     </header>
     {chat.error && visible && <div role="alert" className="dsh-wsl-chat-notice">{chat.error}</div>}
@@ -109,10 +123,25 @@ export function GuestChrome({ model }) {
   return <span ref={ref} />;
 }
 
-export function installConversationSlots(ctx, model) {
+export function installConversationSlots(ctx, model, api) {
+  ctx.slots.inject('conversation.input.dock', () => {
+    const native = ctx.slots.entries('conversation.session').find(entry => entry.store?.spec?.persist === 'dsh.conversation');
+    if (!native) return;
+    return ctx.slots.register({ name: 'conversation.input.dock', id: 'dsh-wsl-handoff-draft', store: native.store }, props => <HandoffDraftBinding {...props} ctx={ctx} />);
+  });
   ctx.effect(() => installNativeWorkspaces(ctx, model));
+  ctx.effect(() => installNativeSidebar(ctx, model));
+  ctx.slots.inject('sidebar.workspaces.session.menu.item', () => ctx.slots.register({ name: 'sidebar.workspaces.session.menu.item', id: 'dsh-wsl-handoff', order: 350 }, props => {
+    const [, closeMenu] = props.useMenuOpenState();
+    if (model.state?.mode !== 'windows-host' || model.guest) return null;
+    return <MenuItemButton onSelect={() => {
+      closeMenu(false);
+      const row = model.conversations.nativeCatalog().rows.find(row => row.id === props.sessionId);
+      if (row) model.conversations.requestHandoff({ id: row.id, row });
+    }}>交接工作…</MenuItemButton>;
+  }));
   ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: CONVERSATION_PANEL }, () => <ConversationTarget ctx={ctx} model={model} />));
-  ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'dsh-wsl-conversations', order: 15 }, () => <><ConversationFrames ctx={ctx} model={model} /><GuestChrome model={model} /></>));
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'dsh-wsl-conversations', order: 15 }, () => <><ConversationFrames ctx={ctx} model={model} /><GuestChrome model={model} /><WorkspaceDialogs model={model} api={api} ctx={ctx} /></>));
   ctx.slots.inject('sidebar.workspaces', () => {
     let dispose;
     const sync = () => {

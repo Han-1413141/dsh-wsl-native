@@ -32,7 +32,7 @@ export function apply(ctx) {
   };
   const model = createClientModel(ctx, api);
   model.conversations = createConversations(ctx, api, model);
-  installConversationSlots(ctx, model);
+  installConversationSlots(ctx, model, api);
   ctx.effect(() => () => model.dispose());
   ctx.effect(() => {
     const style = document.createElement("style");

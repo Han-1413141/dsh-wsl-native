@@ -1,4 +1,5 @@
 import { stored } from './client-session.mjs';
+import { createWorkHandoff } from './work-handoff.mjs';
 import { readHandoff, appOrigin, DESKTOP_ORIGIN } from './handoff.mjs';
 import { acceptsMessage, catalogOf, cleanCatalog, conversationKey, embeddedUrl,
   CONVERSATION_PANEL, CONVERSATION_PROTOCOL } from './conversation-protocol.mjs';
@@ -6,9 +7,43 @@ import { acceptsMessage, catalogOf, cleanCatalog, conversationKey, embeddedUrl,
 export function createConversations(ctx, api, model) {
   const entries = new Map(), requests = new Map(), lifetime = new AbortController();
   const closedViews = new Set(), restoring = new Set(), restoreTried = new Map();
+  const localHandoff = createWorkHandoff(ctx);
+  const savedOrder = stored('workspace-order', undefined, localStorage);
   let revision = 0, saveTimer, lastLocal;
   const chat = {
-    entries, activeKey: null, error: null, busy: false, anchor: null,
+    entries, activeKey: null, error: null, busy: false, anchor: null, dialog: null, catalogRevision: 0,
+    workspaceOrder: Array.isArray(savedOrder) ? savedOrder.filter(id => typeof id === 'string').slice(0, 16000) : [],
+    requestWorkspace() { chat.dialog = { type: 'workspace' }; model.emit(); },
+    requestRename(target) { chat.dialog = { type: 'rename', target }; model.emit(); },
+    requestHandoff(source) { chat.dialog = { type: 'handoff', source }; model.emit(); },
+    async handoff(entry, action, payload) {
+      const result = entry ? await chat.remote(entry, action, payload) : await localHandoff(action, payload);
+      if (action === 'handoff.deliver') {
+        if (entry) { chat.activeKey = entry.key; ctx.layout.selectPanel(CONVERSATION_PANEL); }
+        else chat.showWindows(result.sessionId);
+        model.emit();
+      }
+      return result;
+    },
+    setWorkspaceOrder(order) { chat.workspaceOrder = order; stored('workspace-order', order, localStorage); model.emit(); },
+    async remote(entry, action, payload) {
+      if (!entry.ready) {
+        if (chat.busy) throw new Error('WSL 环境正在连接，请稍后重试。');
+        await chat.enter(entry.settings, { connectOnly: true }, false);
+        await new Promise((resolve, reject) => {
+          let unsubscribe = () => {};
+          const finish = error => { clearTimeout(timer); unsubscribe(); lifetime.signal.removeEventListener('abort', abort); error ? reject(error) : resolve(); };
+          const abort = () => finish(new Error('窗口已关闭。'));
+          const timer = setTimeout(() => finish(new Error(chat.error || 'WSL 页面连接超时，请重新连接。')), 45000);
+          const check = () => { const current = entries.get(entry.key); if (current?.ready) { entry = current; finish(); } else if (chat.error) finish(new Error(chat.error)); };
+          unsubscribe = model.subscribe(check); lifetime.signal.addEventListener('abort', abort, { once: true }); check();
+        });
+      }
+      const value = await request(entry, action, payload);
+      // Refresh after mutations so subsequent actions use authoritative membership.
+      if (action !== 'search') await request(entry, 'refresh', {});
+      return value;
+    },
     unified: stored('sidebar-view-v050', undefined, localStorage) === 'conversations',
     nativeCatalog: () => catalogOf(ctx),
     visible: () => ctx.layout.panelInfo.getSnapshot().activePanelId === CONVERSATION_PANEL,
@@ -32,7 +67,7 @@ export function createConversations(ctx, api, model) {
       try { await navigate(entry, { sessionId: row.id }); }
       catch (error) { chat.error = error.message; model.emit(); }
     },
-    async enter(settings, intent = {}) {
+    async enter(settings, intent = {}, select = true) {
       if (chat.busy) return;
       const current = ++revision;
       chat.busy = true; chat.error = null; model.emit();
@@ -49,7 +84,7 @@ export function createConversations(ctx, api, model) {
         }
         if (lifetime.signal.aborted) return;
         if (handoff?.state !== 'ready') throw new Error('Linux 启动仍未完成，请在环境面板查看进度。');
-        await chat.adopt(handoff, intent, current === revision);
+        await chat.adopt(handoff, intent, select && current === revision);
       } catch (error) { chat.error = error.message; }
       finally { chat.busy = false; model.emit(); }
     },
@@ -72,8 +107,10 @@ export function createConversations(ctx, api, model) {
       entry.handoff = readHandoff(new URL(handoff.url).hash);
       if (select) { chat.activeKey = key; ctx.layout.selectPanel(CONVERSATION_PANEL); }
       const payload = { handoff: entry.handoff, ...intent };
-      if (entry.ready) await navigate(entry, payload);
-      else entry.waiting = payload;
+      if (!intent.connectOnly) {
+        if (entry.ready) await navigate(entry, payload);
+        else entry.waiting = payload;
+      }
       save(); model.emit();
     },
     bind(entry, iframe) { entry.window = iframe?.contentWindow || null; },
@@ -95,8 +132,7 @@ export function createConversations(ctx, api, model) {
       try {
         if (row.environment) {
           const entry = entries.get(row.environment.key);
-          if (!entry.ready) throw new Error('请先打开这条 WSL 对话，再执行操作。');
-          await request(entry, action, { sessionId: row.id });
+          await chat.remote(entry, action, { sessionId: row.id });
         } else {
           const names = { pin: 'pinSession', unpin: 'unpinSession', archive: 'archiveSession', unarchive: 'unarchiveSession' };
           if (!names[action]) throw new Error('对话操作无效。');
@@ -143,7 +179,7 @@ export function createConversations(ctx, api, model) {
       const timer = setTimeout(() => { requests.delete(id); reject(new Error('WSL 对话没有及时响应，请检查连接；操作不会自动重放。')); }, 30000);
       requests.set(id, { entry, resolve, reject, timer });
       if (entry.desktop) void entry.desktop.request(action, payload).then(
-        () => accept(entry, { type: 'result', id, ok: true }),
+        value => accept(entry, { type: 'result', id, ok: true, value }),
         error => accept(entry, { type: 'result', id, ok: false, error: error.message }),
       );
       else entry.window.postMessage({ protocol: CONVERSATION_PROTOCOL, channel: entry.channel, type: 'request', id, action, payload }, entry.origin);
@@ -176,6 +212,7 @@ export function createConversations(ctx, api, model) {
       const catalog = cleanCatalog(message.catalog); if (!catalog) return;
       const first = !entry.ready;
       entry.ready = true; entry.catalog = catalog; entry.lastSeen = Date.now();
+      chat.catalogRevision++;
       if (first) theme(entry);
       if (entry.waiting) {
         const payload = entry.waiting; entry.waiting = null;
@@ -186,7 +223,7 @@ export function createConversations(ctx, api, model) {
       const pending = requests.get(message.id);
       if (!pending || pending.entry !== entry) return;
       clearTimeout(pending.timer); requests.delete(message.id);
-      message.ok ? pending.resolve() : pending.reject(new Error(String(message.error || '操作失败。').slice(0, 1000)));
+      message.ok ? pending.resolve(message.value) : pending.reject(new Error(String(message.error || '操作失败。').slice(0, 1000)));
     } else if (message.type === 'return') chat.showWindows();
     else if (message.type === 'sidebar') ctx.layout.toggleSidebar();
   }

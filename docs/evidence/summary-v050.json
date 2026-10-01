@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-01",
+  "version": "0.5.0",
+  "unit": {
+    "pass": 56,
+    "fail": 0,
+    "skipped": 0
+  },
+  "syntax": true,
+  "build": true,
+  "clientBytes": 93565,
+  "clientLimitBytes": 262144,
+  "inheritanceEvidence": "inheritance-v050.json",
+  "nativeWindowUiClicked": false,
+  "nativeUiReason": "Interaction review was interrupted before v0.5.0 native GUI validation.",
+  "historicalDesktopRuntime": "desktop-runtime-v040.json",
+  "historicalSummary": "summary-v040.json",
+  "releasePackageVerification": "https://github.com/Han-1413141/dsh-wsl-native/releases/download/v0.5.0/verification-0.5.0.json",
+  "packageEvidence": "package-v050.json"
+}
