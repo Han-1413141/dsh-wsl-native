@@ -31,7 +31,7 @@ Windows 和 Linux 是两个同时可用的完整 DSH 宿主，保留各自的原
 
 进入链接携带工作目录和本机返回来源，使用该 Linux 实例的随机密钥进行 HMAC-SHA-256 签名，24 小时有效。Linux 宿主通过已认证的 `environment/adopt` 接口验证后才应用目录。签名密钥只经子进程环境传递，不返回浏览器或写入设置文件。父页面来源允许本机 HTTP(S) 和精确的 `dsh-app://app`；Linux 服务器目标仍限本机 HTTP(S)。独立 Linux 浏览器页面返回桌面端时使用官方 `dsh://open` 协议。
 
-前端通过官方 `workspaces.create` 和 `uiWorkspace.openSession/openWorkspace` 打开项目。使用公开的会话列表记录每个目录上次查看的会话；已删除或归档的会话不参与恢复。未记住会话时选择项目最近更新的可见会话，没有可用会话时通过 DSH 创建。不会复制其他宿主的会话数据库或密钥。
+前端通过官方 `workspaces.create` 和 `uiWorkspace.openSession/openWorkspace` 打开项目。使用公开的会话列表记录每个目录上次查看的会话；已删除或归档的会话不参与恢复。未记住会话时选择项目最近更新的可见会话，没有可用会话时通过 DSH 创建。不会复制其他宿主的会话数据库。模型账号可在环境准备阶段继承，规则见下文。
 
 ## 通信与资源上限
 
@@ -65,7 +65,7 @@ DSH API 仍处于预览阶段，因此 peer dependency 固定为 `0.2.0-rc.2`。
 
 ### 同窗口对话
 
-Windows 端注册统一 `sidebar.workspaces` 视图及一个 `main` 对话区域。用户可以撤销该视图，恢复 DSH 原生工作区浏览器；不修改其工作区记录和会话数据。Linux 的完整原生客户端驻留在 `shell.overlay` 下，几何位置跟随主区域，切换 Windows 对话时隐藏并设为不可交互，保持进程、页面和输入状态。Web 使用 iframe；Desktop 使用 DSH 官方隔离 webview。
+Windows 默认保留原生工作区。由于适配版本没有工作区标题及树附加插槽，插件只向现有 DOM 添加自有的切换按钮和 WSL 分组，通过模型订阅与限定在侧栏内的 MutationObserver 维护，卸载时移除。Windows 工作区的原生记录与渲染器保持独立。紧凑模式通过 `sidebar.workspaces` 注册替代列表；两种模式共用一个 `main` 对话区域。Linux 的完整原生客户端驻留在 `shell.overlay` 下，几何位置跟随主区域，切换 Windows 对话时隐藏并设为不可交互，保持进程、页面和输入状态。Web 使用 iframe；Desktop 使用 DSH 官方隔离 webview。
 
 Web iframe 加载本机 Linux DSH 的认证入口。签名工作区链接验证通过后，Linux 客户端才启用嵌入通信。每个页面持有独立随机通道；两端同时检查 `event.origin`、`event.source` 和协议标识，发送时指定精确目标来源，遵循 [postMessage 的来源校验要求](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage#security_concerns)。消息与文件操作仍直接访问 Linux 宿主，跨页面只交换有限的导航元数据和允许的会话管理请求。
 
@@ -80,6 +80,14 @@ Linux 插件完成签名验证后，暴露只读的 `__DSH_WSL_DESKTOP_V1__` 接
 会话目录变化唤醒等待中的请求；空闲等待最长 20 秒，只保留最新目录和最多 16 条界面信号。容器在环境切换时保持驻留，卸载时移除页面并释放官方 lease；异步申请晚于卸载完成时也立即释放。整个过程保留 DSH 强制的 sandbox、contextIsolation 和 webSecurity，不修改 Electron 程序包或宿主安全策略。
 
 适配依据是[官方 Desktop 实现](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/desktop/src/browser-guests.ts)。本机安装版 0.2.0-rc.2 已确认包含这些接口；真实运行时检查与原生 GUI 验收的范围见[验证报告](validation.md)。
+
+### 插件与配置继承
+
+宿主通过官方 `profileContext` 取得当前配置目录。从 Windows 准备 Linux 时，按默认选项继承主环境插件、Cordis 配置和模型账号。Windows 已安装插件打包后，依赖通过 Windows npm 缓存取得，由 Linux npm 完成安装；按内容摘要复用安装层，不直接使用 Windows 的 `node_modules`。
+
+配置按字段进行三方合并：主环境当前值、Linux 当前值、上次继承值的 SHA-256。Linux 自己修改或删除的值优先，未修改的值跟随主环境更新；账号记录整体合并，避免组合不同版本的 token 与过期时间。同步基线不存密钥原文。写入前备份，用旧文件 SHA-256 检查冲突，账号与配置文件使用 0600。
+
+继承只发生在准备环境时，已运行的 Linux 实例继续复用。主环境插件自带的 Windows 专用路径和平台限制不自动伪装成 Linux 兼容项；细调与停用继承见[继承说明](inheritance.md)。
 
 ### 安装与生命周期
 
@@ -99,6 +107,8 @@ Linux 插件完成签名验证后，暴露只读的 `__DSH_WSL_DESKTOP_V1__` 接
 | `src/worker.mjs`、`src/process.mjs`、`src/encoding.mjs` | 两端进程、文件、任务、文本解码 |
 | `src/launcher.mjs`、`src/install-cache.mjs` | 安装、缓存下载、启动与停止 |
 | `src/routes.mjs` | 管理接口 |
+| `src/inheritance.mjs`、`src/inheritance-ui.jsx` | 插件和配置继承、差异保留与管理入口 |
+| `src/native-workspaces.mjs`、`src/sidebar.jsx` | 原生工作区 WSL 分组、紧凑列表和切换按钮 |
 | `src/client.jsx`、`src/page.jsx`、`src/components.jsx`、`src/client.css` | 原生侧边栏页面、目录弹窗与主题样式 |
 | `src/client-session.mjs` | 页面状态、工作区打开和会话恢复 |
 | `src/conversations.jsx`、`src/conversation-model.mjs` | 统一对话列表、常驻页面、导航与页面生命周期 |

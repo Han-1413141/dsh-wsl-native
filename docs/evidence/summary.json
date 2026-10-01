@@ -1,16 +1,20 @@
 {
-  "date": "2026-09-30",
-  "version": "0.4.0",
-  "unit": { "pass": 49, "fail": 0, "skipped": 0 },
+  "date": "2026-10-01",
+  "version": "0.5.0",
+  "unit": {
+    "pass": 56,
+    "fail": 0,
+    "skipped": 0
+  },
   "syntax": true,
   "build": true,
-  "clientBytes": 80439,
+  "clientBytes": 93565,
   "clientLimitBytes": 262144,
-  "desktopRuntimeEvidence": "desktop-runtime-v040.json",
+  "inheritanceEvidence": "inheritance-v050.json",
   "nativeWindowUiClicked": false,
-  "webUiEvidence": "ui-v030.json",
-  "webUiVersion": "0.3.0",
-  "historicalSummary": "summary-v030.json",
-  "historicalWslAndPerformanceChecks": "summary-v020.json",
-  "releasePackageVerification": "https://github.com/Han-1413141/dsh-wsl-native/releases/download/v0.4.0/verification-0.4.0.json"
+  "nativeUiReason": "Interaction review was interrupted before v0.5.0 native GUI validation.",
+  "historicalDesktopRuntime": "desktop-runtime-v040.json",
+  "historicalSummary": "summary-v040.json",
+  "releasePackageVerification": "https://github.com/Han-1413141/dsh-wsl-native/releases/download/v0.5.0/verification-0.5.0.json",
+  "packageEvidence": "package-v050.json"
 }

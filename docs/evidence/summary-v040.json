@@ -1,0 +1,16 @@
+{
+  "date": "2026-09-30",
+  "version": "0.4.0",
+  "unit": { "pass": 49, "fail": 0, "skipped": 0 },
+  "syntax": true,
+  "build": true,
+  "clientBytes": 80439,
+  "clientLimitBytes": 262144,
+  "desktopRuntimeEvidence": "desktop-runtime-v040.json",
+  "nativeWindowUiClicked": false,
+  "webUiEvidence": "ui-v030.json",
+  "webUiVersion": "0.3.0",
+  "historicalSummary": "summary-v030.json",
+  "historicalWslAndPerformanceChecks": "summary-v020.json",
+  "releasePackageVerification": "https://github.com/Han-1413141/dsh-wsl-native/releases/download/v0.4.0/verification-0.4.0.json"
+}

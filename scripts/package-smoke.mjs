@@ -24,7 +24,9 @@ try {
   const response=await fetch(origin+'/api/dsh-wsl-native/status',{method:'POST',headers:{Cookie:cookies,'Content-Type':'application/json'},body:JSON.stringify({type:'client-request',rpcId:'package-test',method:'dsh-wsl-native/status',payload:{}})});
   assert.equal(response.status,200);const result=await response.json();assert.equal(result.result?.value?.mode,'windows-host',JSON.stringify(result));
   assert.equal(result.result.value.version,manifest.version,'Installed plugin version does not match package manifest');
-  const evidence={date:new Date().toISOString(),package:`${manifest.name}@${manifest.version}`,officialPluginInstall:true,profileOutsideSourceTree:true,authenticatedApi:true};
+  assert.equal(result.result.value.native.inheritance.available, true, 'Host profileContext must enable inheritance');
+  assert.equal(result.result.value.native.inheritance.source, 'web');
+  const evidence={date:new Date().toISOString(),package:`${manifest.name}@${manifest.version}`,officialPluginInstall:true,profileOutsideSourceTree:true,authenticatedApi:true,officialProfileContext:true};
   await fs.writeFile(path.join(root,'.test-output','package-install.json'),JSON.stringify(evidence,null,2));
   console.log('PASS tgz 通过官方 dsh plugin 安装到源码目录外的独立配置，宿主加载和认证接口正常。');
 } finally {

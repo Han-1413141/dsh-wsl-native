@@ -4,6 +4,7 @@ import { BridgeError, ensure, errorData } from "./errors.mjs";
 import { environmentKey } from "./service.mjs";
 import { handoffUrl, appOrigin } from "./handoff.mjs";
 import { signHandoff, verifyHandoff } from "./handoff-auth.mjs";
+import { ProfileInheritance } from "../lib/inheritance.mjs";
 export const PREFIX = "/dsh-wsl-native";
 
 export function trusted(req, port) {
@@ -154,6 +155,7 @@ export function createController(
           parentOrigin: appOrigin(process.env.DSH_WSL_PARENT_ORIGIN),
           launchDirectory: process.env.DSH_WSL_DIRECTORY || null,
           native: {
+            inheritance: await new ProfileInheritance(service).status(),
             ...(active
               ? snapshot(active, status.settings)
               : {
@@ -282,6 +284,11 @@ export function createController(
             handoffs.delete(id);
         return { id: handoff.id, settings };
       }
+      if (route === "native/inheritance") {
+        const { entry } = await selected(p, signal);
+        ensure(!entry.operation, 'SETUP_BUSY', '环境正在准备，完成后再调整继承选项。');
+        return entry.launcher.inheritance.configure(p.options);
+      }
       if (route === "native/prepare") {
         const { settings, entry } = await selected(p, signal);
         ensure(
@@ -339,6 +346,7 @@ export function registerControlRoutes(connection, controller) {
     "browse",
     "open",
     "native/enter",
+    "native/inheritance",
     "native/prepare",
     "native/start",
     "native/stop",

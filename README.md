@@ -1,6 +1,6 @@
 # DSH for WSL
 
-在同一个 Windows DSH 窗口里使用 Windows 和原生 Linux 对话。WSL 对话带有标志，点击对话即可切换环境，保留各自的草稿和任务。包名为 `dsh-wsl-native`，当前版本为 **0.4.0**，适配 **DeepSeek Harness 0.2.0-rc.2**，支持 Windows Desktop 和 Windows Web。
+在同一个 Windows DSH 窗口里使用 Windows 和原生 Linux 对话。WSL 对话带有标志，点击对话即可切换环境，保留各自的草稿和任务。包名为 `dsh-wsl-native`，当前版本为 **0.5.0**，适配 **DeepSeek Harness 0.2.0-rc.2**，支持 Windows Desktop 和 Windows Web。
 
 [下载安装包](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) · [桌面端安装与使用](docs/desktop.md) · [完整手册](docs/usage.md) · [问题反馈](https://github.com/Han-1413141/dsh-wsl-native/issues)
 
@@ -19,11 +19,11 @@
 
 ### 安装到 Windows 桌面端
 
-从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.4.0.tgz`，保留在固定目录。在 PowerShell 中使用 **桌面端附带的 CLI** 安装；将下面的路径换成本机安装目录和包路径：
+从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.5.0.tgz`，保留在固定目录。在 PowerShell 中使用 **桌面端附带的 CLI** 安装；将下面的路径换成本机安装目录和包路径：
 
 ```powershell
 $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
-& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.4.0.tgz'
+& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.5.0.tgz'
 ```
 
 `desktop` 是桌面端配置，`web` 是另一个配置。已在 PATH 中配置桌面端 CLI 时，也可直接使用 `dsh plugin --profile desktop add ...`。安装后在桌面端查找 **WSL 与 Windows**；若当前窗口尚未显示入口，等当前任务结束后从托盘退出 DSH，再重新打开。
@@ -36,12 +36,13 @@ $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 
 1. 点击 **开始 WSL 对话**。插件准备依赖、启动 Linux DSH，在当前窗口的主区域打开原生 Linux 对话。
 2. 左侧同一个列表显示两边的对话；Linux 对话右侧有 **WSL** 标志。点击 Windows 或 WSL 对话即可切换，不跳转整个页面。
-3. 使用 **Windows ＋** 或 **WSL ＋** 新建对应环境的对话。列表支持环境筛选、标题与目录搜索、置顶和归档。
-4. WSL 对话顶部的 **Linux 设置** 可以展开 Linux 自己的设置、插件和工作区；**工作区** 按钮可恢复完整原生工作区列表。原有 **新窗口打开** 方式继续保留。
+3. 默认保留原生工作区，并在其中显示带 **WSL** 标记的项目与对话。点击“工作区”标题右侧的小切换按钮，进入紧凑对话列表；点击同一位置的按钮切回。
+4. 紧凑列表的搜索、筛选和新建入口集中在标题行，按需展开。在新建菜单选择 Windows 或 WSL；对话菜单支持置顶和归档。
+5. WSL 对话顶部的 **Linux 配置** 直接打开 Linux 插件管理。环境面板中的 **Linux 插件与配置** 可以控制继承选项。原有 **新窗口打开** 方式继续保留。
 
-每个发行版和用户分别记忆最近目录。再次进入同一项目时优先打开上次查看的会话。目录输入接受 Linux、Windows 和 WSL UNC 路径，验证成功后才更新设置。首次使用 Linux DSH 时，需要在其界面配置自己的模型账号或 API Key。
+每个发行版和用户分别记忆最近目录。再次进入同一项目时优先打开上次查看的会话。目录输入接受 Linux、Windows 和 WSL UNC 路径，验证成功后才更新设置。从 Windows 插件进入时，Linux 默认继承当前主环境的插件、设置和模型账号；在 Linux 单独修改的项目会保留。详见[继承与独立调整](docs/inheritance.md)。
 
-两边共用窗口和对话列表，各条对话继续使用所属环境的运行进程、权限和文件系统。切换不会迁移一条对话到另一个系统，也不会复制账号密钥。Desktop 使用 DSH 官方隔离网页容器；Web 使用同窗口嵌入页。两种入口共用会话列表和环境管理。
+两边共用窗口和对话列表，各条对话继续使用所属环境的运行进程、权限和文件系统。切换不会迁移一条对话到另一个系统。账号继承仅在本机准备 Linux 环境时进行，可在环境面板关闭；会话数据保持独立。Desktop 使用 DSH 官方隔离网页容器；Web 使用同窗口嵌入页。两种入口共用会话列表和环境管理。
 
 推荐把 Linux 项目放在 `/home/<用户>/...`。DSH 本体、插件和依赖也安装在 Linux 文件系统，保留大小写敏感文件名、符号链接、可执行权限和文件监听。Windows 挂载目录可以使用，面板会说明频繁读写时的取舍。
 
@@ -58,7 +59,7 @@ node .\bin\dsh-wsl.mjs start --distro Ubuntu --cwd /home/codex
 
 将 `Ubuntu` 和 `/home/codex` 换成自己的发行版、Linux 目录。`start` 打开本机 DSH 页面，保持当前终端运行；按 `Ctrl+C` 停止该实例。第一次打开时，在 DSH 中配置自己的模型账号或 API Key，并添加 Linux 工作区。
 
-安装位置是所选 Linux 用户的 `~/.local/share/dsh-wsl-native/`。DSH 数据放在其中的 `dsh-home/`，与已有 Windows DSH 数据分开。启动器不复制账号、密钥或历史会话。
+安装位置是所选 Linux 用户的 `~/.local/share/dsh-wsl-native/`。DSH 数据放在其中的 `dsh-home/`，与已有 Windows DSH 数据分开。直接运行 CLI 时没有主 DSH 配置上下文，因此不会自动继承；从 Windows DSH 插件入口启动则默认继承主环境插件、设置和模型账号。两种入口均不复制历史会话。
 
 Windows 上的 `setup` 默认由 Windows npm 下载依赖，再由 Linux npm 离线安装。安装脚本仍在 Linux 执行；个别第三方安装脚本如果自行联网，仍需要对应网络条件。可以用 `--install-network linux` 改为 Linux 直接下载。再次执行 `setup` 会更新插件快照，已成功安装的同版本 DSH 会被复用；修复损坏安装用 `--reinstall`。
 
@@ -67,7 +68,7 @@ Windows 上的 `setup` 默认由 Windows npm 下载依赖，再由 Linux npm 离
 安装到需要使用的 DSH 配置：
 
 ```powershell
-dsh plugin --profile web add "C:\path\to\dsh-wsl-native-0.4.0.tgz"
+dsh plugin --profile web add "C:\path\to\dsh-wsl-native-0.5.0.tgz"
 dsh web
 ```
 
@@ -81,7 +82,7 @@ Windows 原有工具继续工作。插件增加的工具以 `wsl_native_` 开头
 
 ![Windows Web 同窗口 Windows 与 WSL 对话，0.3.0 实测截图](docs/assets/unified-conversations.png)
 
-上图来自 Windows Web 的真实同窗口验证，展示统一列表与 Linux 原生文件侧栏；桌面端沿用相同控件和主题，使用独立的页面容器。
+上图是 0.3.0 的历史截图。0.5.0 已收起常驻搜索与筛选区，新增原生工作区切换按钮，并隐藏 Linux 的重复侧栏。
 
 ## 可以做什么
 
@@ -109,7 +110,7 @@ Windows 原有工具继续工作。插件增加的工具以 `wsl_native_` 开头
 
 Windows Node v24.19.0、Ubuntu Node v22.22.1，已启动的 WSL 2 中交错执行 30 轮 `/bin/true`：常驻连接的中位耗时 **4.601 ms**，每次启动 `wsl.exe` 为 **289.644 ms**。这衡量短命令的调用开销，不代表模型推理、编译或整体任务的加速比例。
 
-0.4.0 的 49 项自动化检查全部通过，客户端产物为 80,439 字节。已用 Windows Desktop 0.2.0-rc.2 内置 Electron 运行时完成插件加载、认证接口、Desktop 签名、完整 Linux DSH 启动和反向 Windows 互操作检查。Desktop 原生窗口的鼠标操作与快捷键尚未逐项验收；Web 同窗口、草稿和主题的真实界面结果保留在 [0.3.0 报告](docs/validation-0.3.0.md)。详细结果及验证边界见[当前验证报告](docs/validation.md)。
+0.5.0 的 56 项自动化检查全部通过。真实 Ubuntu WSL 2 中已验证 5 个主环境插件的继承、Linux 配置覆盖保留、账号文件权限，以及完整 Linux DSH 启动与认证接口。Desktop 内置运行时和 Web 界面的历史结果见[验证报告](docs/validation.md)；0.5.0 原生桌面窗口的交互尚未完成逐项验收。
 
 切换会保留各宿主已经保存的会话和文件，账号配置也分别保留；正在生成的模型对话不会迁移到另一个操作系统。同窗口切换时，两边页面保持加载，未发送草稿继续保留。也可以使用“新窗口打开”并排查看。从 Windows 插件启动的 Linux DSH 由该 Windows 宿主管理，退出 Windows DSH 或停止环境会结束对应实例；单纯切换页面不会停止它。
 
@@ -117,6 +118,7 @@ Windows Node v24.19.0、Ubuntu Node v22.22.1，已启动的 WSL 2 中交错执�
 
 - [桌面端说明](docs/desktop.md)：安装、开始对话、更新和卸载。
 - [使用手册](docs/usage.md)：命令、7 个工具、参数、权限和配置。
+- [继承与独立调整](docs/inheritance.md)：主环境插件、Linux 单独设置、备份与同步时机。
 - [GitHub 同类项目调研](docs/research.md)：已有能力、取舍与本插件的实现重点。
 - [架构说明](docs/architecture.md)：连接、文件传输、生命周期和权限。
 - [故障处理](docs/troubleshooting.md)：安装、连接、路径和启动问题。

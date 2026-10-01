@@ -19,39 +19,13 @@ import {
 } from "./components.jsx";
 import { appOrigin, parentUrl } from "./handoff.mjs";
 import { openProject } from "./client-session.mjs";
+import { InheritanceSection } from "./inheritance-ui.jsx";
 
 export function useModel(model) {
   const [, update] = useState(0);
   useEffect(() => model.subscribe(() => update((value) => value + 1)), [model]);
   return model.state;
 }
-export function EnvironmentAction({ model, ctx }) {
-  const state = useModel(model);
-  const linux = state?.mode === "wsl-host";
-  return (
-    <Button
-      variant="ghost"
-      icon={linux ? <TerminalIcon size={18} /> : <SystemIcon size={18} />}
-      title={
-        linux && model.parentOrigin
-          ? "返回 Windows DSH · Linux 保持运行"
-          : "管理 Windows 与 Linux 环境"
-      }
-      aria-label={
-        linux && model.parentOrigin
-          ? "返回 Windows DSH"
-          : "管理 Windows 与 Linux 环境"
-      }
-      onClick={() => {
-        if (model.guest) model.guest.returnWindows();
-        else if (linux && model.parentOrigin)
-          window.location.assign(parentUrl(model.parentOrigin));
-        else ctx.layout.selectPanel("dsh-wsl-native");
-      }}
-    />
-  );
-}
-
 export function WslPage({ api, ctx, model }) {
   const state = useModel(model);
   const [draft, setDraft] = useState(model.draft);
@@ -85,7 +59,6 @@ export function WslPage({ api, ctx, model }) {
       model.readyLink = handoff.url;
       model.setPending(null);
       if (pending.mode === "same") {
-        model.conversations.setUnified(true);
         void model.conversations.adopt(handoff).catch(error => {
           model.error = error.message;
           model.emit();
@@ -448,6 +421,7 @@ export function WslPage({ api, ctx, model }) {
         )}
       </section>
 
+      <InheritanceSection state={state} model={model} chosen={chosen} task={task} api={api} disabled={disabled || activeWork} />
       <section
         className="dsh-wsl-section"
         aria-labelledby="dsh-wsl-connection-title"

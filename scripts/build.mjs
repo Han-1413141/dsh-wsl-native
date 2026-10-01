@@ -13,6 +13,17 @@ await build({
   target: "node22",
   legalComments: "none",
 });
+await build({
+  absWorkingDir: root,
+  entryPoints: ["src/inheritance.mjs"],
+  outfile: "lib/inheritance.mjs",
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  banner: { js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);" },
+  target: "node22",
+  legalComments: "none",
+});
 const client = await build({
   absWorkingDir: root,
   entryPoints: ["src/client.jsx"],

@@ -5,15 +5,16 @@ import { acceptsMessage, catalogOf, cleanCatalog, conversationKey, embeddedUrl,
 
 export function createConversations(ctx, api, model) {
   const entries = new Map(), requests = new Map(), lifetime = new AbortController();
+  const closedViews = new Set(), restoring = new Set(), restoreTried = new Map();
   let revision = 0, saveTimer, lastLocal;
   const chat = {
     entries, activeKey: null, error: null, busy: false, anchor: null,
-    unified: stored('unified-conversations', undefined, localStorage) !== false,
+    unified: stored('sidebar-view-v050', undefined, localStorage) === 'conversations',
     nativeCatalog: () => catalogOf(ctx),
     visible: () => ctx.layout.panelInfo.getSnapshot().activePanelId === CONVERSATION_PANEL,
     changed() { model.emit(); },
     setUnified(value) {
-      chat.unified = value; stored('unified-conversations', value, localStorage); model.emit();
+      chat.unified = value; stored('sidebar-view-v050', value ? 'conversations' : 'workspaces', localStorage); model.emit();
     },
     setAnchor(element) { chat.anchor = element; model.emit(); },
     showWindows(sessionId) {
@@ -54,6 +55,7 @@ export function createConversations(ctx, api, model) {
     },
     async adopt(handoff, intent = {}, select = true) {
       const key = conversationKey(handoff.settings);
+      closedViews.delete(key);
       const origin = new URL(handoff.url).origin;
       let entry = entries.get(key);
       if (!entry || entry.origin !== origin) {
@@ -104,11 +106,13 @@ export function createConversations(ctx, api, model) {
       model.emit();
     },
     toggleChrome(entry) {
-      entry.compact = !entry.compact;
-      void request(entry, 'chrome', { compact: entry.compact }).catch(error => { chat.error = error.message; model.emit(); });
-      model.emit();
+      const panel = entry.configOpen ? null : 'plugins';
+      void request(entry, 'chrome', { compact: true, panel }).then(() => {
+        entry.configOpen = !!panel; entry.compact = true; model.emit();
+      }).catch(error => { chat.error = error.message; model.emit(); });
     },
     closeView(entry) {
+      closedViews.add(entry.key);
       rejectRequests(entry, '这个环境的页面已关闭，后台任务继续运行。');
       if (chat.activeKey === entry.key) chat.showWindows();
       delete entry.url; entry.window = null; entry.ready = false; entry.origin = null;
@@ -124,9 +128,9 @@ export function createConversations(ctx, api, model) {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => stored('conversation-catalogs', [...entries.values()].map(entry => ({
       key: entry.key, settings: entry.settings, catalog: entry.catalog,
-    }))), 200);
+    })), localStorage), 200);
   }
-  const cached = stored('conversation-catalogs');
+  const cached = stored('conversation-catalogs', undefined, localStorage) || stored('conversation-catalogs');
   for (const saved of (Array.isArray(cached) ? cached : []).slice(0, 8)) {
     if (!saved?.settings?.distro || !saved?.settings?.directory || !cleanCatalog(saved.catalog)) continue;
     const key = conversationKey(saved.settings);
@@ -147,7 +151,10 @@ export function createConversations(ctx, api, model) {
   }
   async function navigate(entry, payload) {
     const id = crypto.randomUUID(); entry.navigating = id; model.emit();
-    try { await request(entry, 'navigate', payload); }
+    try {
+      await request(entry, 'navigate', payload); entry.configOpen = false;
+      if (payload.panel === 'plugins') { await request(entry, 'chrome', { compact: true, panel: 'plugins' }); entry.configOpen = true; }
+    }
     finally { if (entry.navigating === id) entry.navigating = null; model.emit(); }
   }
   function rejectRequests(entry, reason) {
@@ -190,8 +197,24 @@ export function createConversations(ctx, api, model) {
     const next = JSON.stringify(catalogOf(ctx));
     if (next !== lastLocal) { lastLocal = next; model.emit(); }
   };
+  const restoreRunning = () => {
+    if (model.state?.mode !== 'windows-host') return;
+    for (const instance of model.state.native?.instances || []) {
+      const key = conversationKey(instance.settings);
+      if (!instance.running?.openUrl || entries.get(key)?.url || closedViews.has(key) || restoring.has(key)) continue;
+      let origin;
+      try { origin = new URL(instance.running.openUrl).origin; } catch { continue; }
+      if (restoreTried.get(key) === origin) continue;
+      restoreTried.set(key, origin);
+      restoring.add(key);
+      void chat.adopt({ settings: instance.settings, url: instance.running.openUrl }, {}, false)
+        .catch(error => { chat.error = error.message; })
+        .finally(() => { restoring.delete(key); model.emit(); });
+    }
+  };
   const disposers = [ctx.sessions.list.subscribe(notifyLocal), ctx.workspaces.list.subscribe(notifyLocal),
-    ctx.layout.panelInfo.subscribe(() => { model.emit(); })];
+    ctx.layout.panelInfo.subscribe(() => { model.emit(); }), model.subscribe(restoreRunning)];
+  restoreRunning();
   chat.dispose = () => {
     lifetime.abort(); observer.disconnect(); clearTimeout(saveTimer);
     window.removeEventListener('message', receive);

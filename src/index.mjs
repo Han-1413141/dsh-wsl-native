@@ -35,7 +35,8 @@ function options(args, exec) {
 }
 
 export function apply(ctx, config = {}) {
-  const service = new WslService(config);
+  const profile = ctx.get('profileContext');
+  const service = new WslService({ ...config, sourceProfile: config.sourceProfile || (profile ? { home: profile.home, dir: profile.dir, name: profile.name } : undefined) });
   ctx.effect(() => () => service.close());
   const register = (tool) =>
     ctx.tools.register(defineTool({ output, ...tool }));

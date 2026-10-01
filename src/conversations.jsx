@@ -1,68 +1,15 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Button, Input, Modal, StateDot, IconPanelLeftOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives';
-import { TerminalIcon, SystemIcon } from './components.jsx';
+import { Button, StateDot, IconPanelLeftOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives';
+import { TerminalIcon } from './components.jsx';
 import { useModel } from './page.jsx';
-import { conversationRows, CONVERSATION_PANEL } from './conversation-protocol.mjs';
+import { CONVERSATION_PANEL } from './conversation-protocol.mjs';
 import { appOrigin } from './handoff.mjs';
 import { mountDesktopView } from './desktop-view.mjs';
+import { CompactConversationList } from './sidebar.jsx';
+import { installNativeWorkspaces } from './native-workspaces.mjs';
 
 function WslMark({ distro, connected = true }) {
   return <span className={`dsh-wsl-chat-mark${connected ? '' : ' is-offline'}`} title={`WSL · ${distro || 'Linux'}`}><TerminalIcon size={12} />WSL</span>;
-}
-
-export function ConversationList({ ctx, model, wide, expandSidebar }) {
-  useModel(model);
-  const chat = model.conversations;
-  const [filter, setFilter] = useState('all'), [query, setQuery] = useState(''), [limit, setLimit] = useState(35);
-  const [archived, setArchived] = useState(false), [menu, setMenu] = useState(null);
-  const local = chat.nativeCatalog();
-  const rows = conversationRows(local, chat.entries.values(), { filter, query, archived });
-  const active = chat.entries.get(chat.activeKey);
-  if (!wide) return <div className="dsh-wsl-chat-rail"><Button variant="ghost" icon={<TerminalIcon size={18} />} aria-label="展开 Windows 与 WSL 对话列表" onClick={expandSidebar} /></div>;
-  const runAction = action => { const row = menu; setMenu(null); void chat.action(row, action); };
-  const choose = action => { if (window.matchMedia('(max-width:600px)').matches) ctx.layout.toggleSidebar(); action(); };
-  const showNew = action => { setArchived(false); setFilter('all'); setQuery(''); setLimit(35); choose(action); };
-  return <section className="dsh-wsl-conversations" aria-label="Windows 与 WSL 对话列表">
-    <div className="dsh-wsl-chat-list-heading"><span>对话</span><div>
-      <Button variant="ghost" title="打开原生工作区视图" aria-label="打开原生工作区视图" onClick={() => { chat.setUnified(false); chat.showWindows(); }}>工作区</Button>
-      <Button variant="ghost" title={archived ? '显示当前对话' : '显示已归档对话'} aria-label={archived ? '显示当前对话' : '显示已归档对话'} onClick={() => setArchived(!archived)}>{archived ? '返回' : '归档'}</Button>
-    </div></div>
-    <div className="dsh-wsl-chat-filters" role="group" aria-label="按环境筛选对话">
-      {[['all', '全部'], ['windows', 'Windows'], ['wsl', 'WSL']].map(([value, label]) => <button key={value} type="button" aria-pressed={filter === value} onClick={() => { setFilter(value); setLimit(35); }}>{label}</button>)}
-    </div>
-    <Input aria-label="搜索对话或工作目录" placeholder="搜索对话或目录" value={query} onChange={event => { setQuery(event.target.value); setLimit(35); }} />
-    <div className="dsh-wsl-chat-new"><Button variant="ghost" onClick={() => showNew(() => chat.newWindows())} aria-label="新建 Windows 对话"><SystemIcon size={14} />Windows ＋</Button>
-      <Button variant="ghost" disabled={chat.busy} onClick={() => showNew(() => void chat.newLinux(active))} aria-label="新建 WSL 对话"><TerminalIcon size={14} />WSL ＋</Button></div>
-    {chat.error && <div className="dsh-wsl-chat-list-error" role="alert">{chat.error}</div>}
-    <div className="dsh-wsl-chat-rows" role="list" aria-label={archived ? '已归档对话' : '所有环境的对话'}>
-      {rows.slice(0, limit).map(row => {
-        const selected = row.environment ? chat.visible() && chat.activeKey === row.environment.key && row.environment.catalog.selectedId === row.id :
-          !ctx.layout.panelInfo.getSnapshot().activePanelId && local.selectedId === row.id;
-        return <div className={`dsh-wsl-chat-row${selected ? ' is-selected' : ''}`} role="listitem" key={row.key}>
-          <button type="button" className="dsh-wsl-chat-row-open" aria-current={selected ? 'page' : undefined} disabled={archived}
-            aria-label={`${row.environment ? 'WSL' : 'Windows'} 对话：${row.title}`} title={`${row.environment ? `WSL · ${row.environment.settings.distro}` : 'Windows'}\n${row.cwd}`}
-            onClick={() => choose(() => void chat.openRow(row))}>
-            <span className="dsh-wsl-chat-dot">{row.running ? <StateDot state="ongoing" /> : row.pinned ? '•' : null}</span>
-            <span className="dsh-wsl-chat-row-text"><span>{row.title || '新对话'}</span><small>{row.cwd.split(/[\\/]/).filter(Boolean).at(-1) || row.workspaceTitle}</small></span>
-            {row.environment && <WslMark distro={row.environment.settings.distro} connected={row.environment.ready && row.environment.catalog.connected} />}
-          </button>
-          <button type="button" className="dsh-wsl-chat-more" aria-label={`管理对话：${row.title}`} onClick={() => setMenu(row)}>⋯</button>
-        </div>;
-      })}
-      {rows.length > limit && <Button variant="ghost" onClick={() => setLimit(limit + 35)}>显示更多（{rows.length - limit}）</Button>}
-      {!rows.length && <div className="dsh-wsl-chat-empty">{query ? '没有匹配的对话' : archived ? '没有已归档对话' : filter === 'wsl' ? '点击 WSL ＋，在这里开始 Linux 对话。' : '选择环境，开始新对话。'}</div>}
-    </div>
-    <div className="dsh-wsl-chat-list-foot">{chat.busy ? <><StateDot state="ongoing" />正在准备 WSL…</> : '两边的任务可同时运行'}</div>
-    <Modal open={!!menu} onClose={() => setMenu(null)} title={menu?.title || '管理对话'}>
-      {menu && <div className="dsh-wsl-chat-menu">
-        <p>{menu.environment ? `WSL · ${menu.environment.settings.distro}` : 'Windows'} · {menu.cwd}</p>
-        {!menu.archived && <Button onClick={() => runAction(menu.pinned ? 'unpin' : 'pin')}>{menu.pinned ? '取消置顶' : '置顶对话'}</Button>}
-        <Button onClick={() => runAction(menu.archived ? 'unarchive' : 'archive')}>{menu.archived ? '恢复对话' : '归档对话'}</Button>
-        {menu.environment?.url && <Button variant="ghost" onClick={() => { chat.closeView(menu.environment); setMenu(null); }}>关闭这个环境的页面（保留后台任务）</Button>}
-        <Button variant="ghost" onClick={() => setMenu(null)}>取消</Button>
-      </div>}
-    </Modal>
-  </section>;
 }
 
 export function ConversationTarget({ ctx, model }) {
@@ -101,7 +48,7 @@ function ResidentFrame({ entry, model, visible, rect, ctx }) {
       <Button variant="ghost" icon={<IconPanelLeftOutlineRegular />} aria-label="展开或收起对话列表" title="展开或收起对话列表" onClick={() => ctx.layout.toggleSidebar()} />
       <WslMark distro={entry.settings.distro} connected={entry.catalog?.connected} /><span className="dsh-wsl-chat-context" title={selected?.cwd || entry.settings.directory}>{entry.settings.distro}<span> · {selected?.cwd?.split('/').filter(Boolean).at(-1) || 'Linux'}</span></span>
       <div className="dsh-wsl-chat-toolbar-actions"><Button variant="ghost" disabled={!entry.ready || chat.busy} onClick={() => void chat.newLinux(entry)}>新对话</Button>
-        <Button variant="ghost" disabled={!entry.ready} title="Linux 设置、插件与工作区" onClick={() => chat.toggleChrome(entry)}>{entry.compact ? 'Linux 设置' : '收起侧栏'}</Button></div>
+        <Button variant="ghost" disabled={!entry.ready} title="管理 Linux 插件与配置" onClick={() => chat.toggleChrome(entry)}>{entry.configOpen ? '返回对话' : 'Linux 配置'}</Button></div>
     </header>
     {chat.error && visible && <div role="alert" className="dsh-wsl-chat-notice">{chat.error}</div>}
     {entry.ready && !entry.catalog?.connected && <div role="status" className="dsh-wsl-chat-notice">WSL 连接已中断，恢复连接后可继续使用。<Button variant="ghost" disabled={chat.busy} onClick={() => chat.reconnect(entry)}>重新连接</Button></div>}
@@ -146,6 +93,10 @@ export function GuestChrome({ model }) {
   useLayoutEffect(() => {
     const frame = ref.current?.closest('[data-shell-overlay]')?.parentElement;
     if (!frame || !model.guest) return;
+    const right = frame.querySelector(':scope > [data-rightbar-col]');
+    const center = right?.previousElementSibling, sidebar = center?.previousElementSibling;
+    sidebar?.setAttribute('data-dsh-wsl-guest-sidebar', '');
+    center?.setAttribute('data-dsh-wsl-guest-center', '');
     frame.toggleAttribute('data-dsh-wsl-embedded', compact);
     const update = () => {
       const match = /minmax\(0px,\s*([\d.]+px)\)\s*$/.exec(frame.style.gridTemplateColumns);
@@ -153,19 +104,20 @@ export function GuestChrome({ model }) {
       if (frame.style.getPropertyValue('--dsh-wsl-right-track') !== width) frame.style.setProperty('--dsh-wsl-right-track', width);
     };
     const observer = new MutationObserver(update); observer.observe(frame, { attributes: true, attributeFilter: ['style'] }); update();
-    return () => { observer.disconnect(); frame.removeAttribute('data-dsh-wsl-embedded'); frame.style.removeProperty('--dsh-wsl-right-track'); };
+    return () => { observer.disconnect(); frame.removeAttribute('data-dsh-wsl-embedded'); frame.style.removeProperty('--dsh-wsl-right-track'); sidebar?.removeAttribute('data-dsh-wsl-guest-sidebar'); center?.removeAttribute('data-dsh-wsl-guest-center'); };
   }, [model.guest, compact]);
   return <span ref={ref} />;
 }
 
 export function installConversationSlots(ctx, model) {
+  ctx.effect(() => installNativeWorkspaces(ctx, model));
   ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: CONVERSATION_PANEL }, () => <ConversationTarget ctx={ctx} model={model} />));
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'dsh-wsl-conversations', order: 15 }, () => <><ConversationFrames ctx={ctx} model={model} /><GuestChrome model={model} /></>));
   ctx.slots.inject('sidebar.workspaces', () => {
     let dispose;
     const sync = () => {
       const enabled = model.state?.mode === 'windows-host' && !!appOrigin(location.origin) && model.conversations?.unified;
-      if (enabled && !dispose) dispose = ctx.slots.register({ name: 'sidebar.workspaces', priority: -80 }, props => <ConversationList {...props} ctx={ctx} model={model} />);
+      if (enabled && !dispose) dispose = ctx.slots.register({ name: 'sidebar.workspaces', priority: -80 }, props => <CompactConversationList {...props} ctx={ctx} model={model} />);
       else if (!enabled && dispose) { dispose(); dispose = null; }
     };
     const unsubscribe = model.subscribe(sync); sync();

@@ -1,7 +1,7 @@
 import React from "react";
 import styles from "./client.css";
 import { TerminalIcon } from "./components.jsx";
-import { WslPage, EnvironmentAction } from "./page.jsx";
+import { WslPage } from "./page.jsx";
 import { createClientModel } from "./client-session.mjs";
 import { createConversations } from "./conversation-model.mjs";
 import { installConversationSlots } from "./conversations.jsx";
@@ -55,12 +55,6 @@ export function apply(ctx) {
         label: () => "WSL 与 Windows",
       },
       TerminalIcon,
-    ),
-  );
-  ctx.slots.inject("sidebar.footer.action", () =>
-    ctx.slots.register(
-      { name: "sidebar.footer.action", id: PANEL, order: 20 },
-      () => <EnvironmentAction ctx={ctx} model={model} />,
     ),
   );
 }

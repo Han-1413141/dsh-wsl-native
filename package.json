@@ -1,6 +1,6 @@
 {
   "name": "dsh-wsl-native",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "DSH for WSL: Windows and WSL hosts, resident stdio bridges, native Linux launch and Windows interoperability",
   "type": "module",
   "main": "src/index.mjs",
@@ -29,6 +29,7 @@
     "test:wsl": "node scripts/wsl-smoke.mjs",
     "test:host": "node scripts/host-smoke.mjs",
     "test:native": "node scripts/native-host-smoke.mjs",
+    "test:inheritance": "node scripts/inheritance-smoke.mjs",
     "bench:wsl": "node scripts/benchmark.mjs",
     "check": "node scripts/check.mjs",
     "test:package": "node scripts/package-smoke.mjs"
@@ -58,7 +59,8 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.4",
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "yaml": "2.9.1"
   },
   "keywords": [
     "dsh-plugin",

@@ -38,7 +38,11 @@ export function startConversationGuest(ctx, model, api, embed) {
           document.body.style.setProperty(name, value);
       return;
     }
-    if (action === 'chrome') { guest.compact = payload.compact !== false; model.emit(); return; }
+    if (action === 'chrome') {
+      guest.compact = true;
+      if (payload.panel === 'plugins' || payload.panel === null) ctx.layout.selectPanel(payload.panel);
+      model.emit(); return;
+    }
     if (action === 'navigate') {
       navigation.abort(); navigation = new AbortController();
       const signal = navigation.signal;

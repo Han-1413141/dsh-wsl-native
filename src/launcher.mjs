@@ -7,6 +7,7 @@ import { shellQuote } from "./paths.mjs";
 import { prepareWindowsCache } from "./install-cache.mjs";
 import { waitForLocalhost } from "./localhost.mjs";
 import { appOrigin } from "./handoff.mjs";
+import { ProfileInheritance } from "../lib/inheritance.mjs";
 
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 export const DSH_VERSION = "0.2.0-rc.2";
@@ -20,6 +21,7 @@ export class NativeLauncher {
     this.lifecycle = new AbortController();
     this.handoffSecret = randomBytes(32).toString("hex");
     this.progress = { phase: "idle", text: "" };
+    this.inheritance = new ProfileInheritance(service);
   }
   async lease(loc, distro, signal) {
     const mkdir = await this.service.execute(
@@ -81,7 +83,8 @@ export class NativeLauncher {
       "NODE_VERSION",
       "Linux DSH 需要 Node.js 22.19+ 的 22.x 系列或 24+。",
     );
-    const base = `${info.home}/.local/share/dsh-wsl-native`;
+    const base = this.service.config.nativeRoot || `${info.home}/.local/share/dsh-wsl-native`;
+    ensure(base.startsWith('/') && !base.includes('\0'), 'INVALID_ARGUMENT', 'Linux 安装目录必须是绝对路径。');
     return {
       base,
       runtime: `${base}/runtime`,
@@ -337,6 +340,10 @@ export class NativeLauncher {
           { path: loc.patch, content: patch },
           { distro, signal },
         );
+        await this.inheritance.apply(loc, { distro, signal, npmCache,
+          onProgress: text => { this.progress = { phase: 'inheriting', text }; onProgress?.(this.progress); },
+          jobUntilDone: this.jobUntilDone.bind(this),
+        });
         this.progress = {
           phase: "ready",
           text: "Linux DSH 与插件已经安装。",

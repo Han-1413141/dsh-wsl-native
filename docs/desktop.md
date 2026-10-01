@@ -1,6 +1,6 @@
 # Windows 桌面端安装与使用
 
-`dsh-wsl-native` 0.4.0 让 Windows DSH 和 WSL 中完整的 Linux DSH 共用一个桌面窗口、一个对话列表。WSL 对话带 `WSL` 标志；点击不同对话即可切换。Windows 对话继续使用 Windows，WSL 对话使用 Linux 原生 Bash、文件系统与工作区。
+`dsh-wsl-native` 0.5.0 让 Windows DSH 和 WSL 中完整的 Linux DSH 共用一个桌面窗口、一个对话列表。WSL 对话带 `WSL` 标志；点击不同对话即可切换。Windows 对话继续使用 Windows，WSL 对话使用 Linux 原生 Bash、文件系统与工作区。
 
 ## 安装条件
 
@@ -13,13 +13,13 @@
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.4.0.tgz`，保存到固定位置。发布页附有 `SHA256SUMS`；可用 `Get-FileHash -Algorithm SHA256` 核对包文件。
+从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.5.0.tgz`，保存到固定位置。发布页附有 `SHA256SUMS`；可用 `Get-FileHash -Algorithm SHA256` 核对包文件。
 
 使用桌面端安装目录内的 `resources\runtime\cli\bin\dsh.cmd`。下面以 `F:\deepseek harness` 为例，请换成本机实际目录：
 
 ```powershell
 $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
-& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.4.0.tgz'
+& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.5.0.tgz'
 & $dshDesktop plugin --profile desktop list --depth 0
 ```
 
@@ -33,7 +33,7 @@ $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 
 ```powershell
 .\scripts\install-desktop.ps1 `
-  -PackagePath 'C:\Downloads\dsh-wsl-native-0.4.0.tgz' `
+  -PackagePath 'C:\Downloads\dsh-wsl-native-0.5.0.tgz' `
   -DshCommand 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 ```
 
@@ -46,8 +46,8 @@ $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 1. 打开 **WSL 与 Windows**，选择发行版和 Linux 用户；不指定用户时采用发行版默认用户。
 2. 选择项目目录。可输入 `/home/...`、Windows 盘符路径或 WSL UNC 路径，也可点击 **浏览**。
 3. 点击 **开始 WSL 对话**。插件准备 Linux DSH 和依赖，启动后在当前窗口打开 Linux 原生对话。
-4. 首次进入 Linux 时，通过 **Linux 设置** 配置 Linux DSH 的模型账号或 API Key。两边账号独立保存。
-5. 在左侧列表点击 Windows 对话即可返回；WSL 对话行带 `WSL` 标志，随时可以切回。
+4. 默认继承主环境插件、设置与模型账号。在 **WSL 与 Windows → Linux 插件与配置** 查看结果或调整继承选项；在 WSL 对话顶部点击 **Linux 配置** 做独立调整。
+5. 原生工作区同时显示 Windows 与 WSL 对话，WSL 项目带 `WSL` 标志。点击工作区标题右侧的小切换按钮可改用紧凑对话列表。
 
 第一次准备涉及下载和安装；之后会复用已经准备的运行时与正在运行的实例。桌面端界面使用 DSH 原生控件、字体和主题变量。切换会话时保留已加载的 Linux 页面，不重新启动整个运行环境。
 
@@ -57,11 +57,11 @@ $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 | --- | --- |
 | Windows ＋ | 创建 Windows 对话 |
 | WSL ＋ | 在当前 Linux 项目创建对话 |
-| 全部／Windows／WSL | 按环境筛选列表 |
+| 筛选图标 | 按全部／Windows／WSL 筛选，或查看归档 |
 | 搜索 | 按标题、项目路径或发行版找对话 |
 | 对话菜单 | 置顶、归档、恢复或关闭环境页面 |
-| Linux 设置 | 展开 Linux DSH 自己的账号、插件及工作区设置 |
-| 工作区 | 恢复 DSH 原生工作区列表 |
+| Linux 配置 | 直接打开 Linux 原生插件管理，完成后返回对话 |
+| 标题右侧切换按钮 | 在原生工作区与紧凑对话列表之间切换 |
 | 新窗口打开 | 使用独立浏览器窗口查看 Linux DSH |
 
 同一窗口最多保留 8 个 Linux 环境页面。关闭某个环境的页面释放页面占用；停止环境才会结束它的 Linux DSH。退出管理它的 Windows DSH 也会结束所属 Linux 实例。不同环境的会话各自运行和保存，切换不会迁移正在生成的模型上下文。
@@ -92,8 +92,10 @@ $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 
 ## 版本与验证
 
-本版完成 49 项自动化检查，并通过已安装 Desktop 的内置 Electron 运行时验证官方插件加载、认证 API、Desktop 签名、完整 Linux DSH 启动和反向 Windows 互操作。桌面端容器使用官方 `browser.acquire/release` 接口，保留宿主的隔离与安全设置。
+本版完成 56 项自动化检查，并在真实 WSL 中验证主环境的 5 个插件继承、Linux 独立配置保留和完整宿主加载。0.4.0 已通过 Desktop 内置 Electron 运行时、认证 API、Desktop 签名和反向 Windows 互操作检查。桌面端容器使用官方 `browser.acquire/release` 接口，保留宿主的隔离与安全设置。
 
 原生桌面窗口的鼠标操作、快捷键和长时间运行尚未逐项验收。仓库截图来自 Windows Web 的真实同窗口检查；不把 Web 截图当作 Desktop 实测截图。各项记录见[验证报告](validation.md)，安装问题见[故障处理](troubleshooting.md)。
 
 上游资料：[DeepSeek Harness Desktop 文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/desktop/README.zh.md)。
+
+插件继承的范围、同步时机、备份和 Linux 独立调整方法见[继承说明](inheritance.md)。

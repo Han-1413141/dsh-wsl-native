@@ -1,29 +1,23 @@
 # 验证报告
 
-验证日期：2026-09-30。插件版本：**0.4.0**。适配 DeepSeek Harness **0.2.0-rc.2**。
+验证日期：2026-10-01。插件版本：**0.5.0**。适配 DeepSeek Harness **0.2.0-rc.2**。
 
-## 本轮结果
+## 本版结果
 
 | 检查 | 结果与范围 |
 | --- | --- |
-| 自动化检查 | 49 项通过，0 失败，0 跳过；Windows Node.js v24.19.0 |
-| 语法检查与构建 | 通过；客户端 80,439 字节，上限 262,144 字节 |
-| 已安装 Desktop 接口 | 确认 0.2.0-rc.2 的实际程序包包含浏览器容器申请、释放、lease 校验和隔离策略 |
-| Desktop 内置 Electron 运行时 | 通过；使用它的 CLI 启动隔离测试宿主，加载本插件与 7 个 Agent 工具 |
-| 认证和拒绝检查 | 已认证 Windows API 可用，未认证请求和缺少 CSRF 的旧 HTTP 变更接口被拒绝 |
-| Desktop 来源与签名 | `dsh-app://app` 父来源生成的链接在实际 Linux DSH 通过签名验证 |
-| 完整 Linux DSH | Ubuntu WSL 2、Linux Node.js v22.22.1 成功启动，加载 0.4.0 插件 |
-| 反向 Windows 互操作 | 从 Linux 连接桌面端的 Electron Node 运行时，返回 win32 平台 |
-| 测试资源释放 | 正常停止本轮 Linux 实例，结束隔离测试宿主 |
-| Desktop 原生 GUI | 尚未逐项进行鼠标点击、快捷键与长时间运行验收 |
+| 自动化检查 | 56 项通过，0 失败，0 跳过；Windows Node.js v24.19.0 |
+| 语法与构建 | 通过；客户端 93,565 字节，上限 262,144 字节 |
+| 主环境插件继承 | 实际 Windows desktop 的 5 个插件在隔离 Ubuntu WSL 2 环境完成安装 |
+| Linux 配置覆盖 | Linux 修改过的显示设置在再次准备后保留 |
+| 模型账号文件 | 实际复制到隔离 Linux 目录并验证 0600 权限；未调用模型 API |
+| 安装包隔离加载 | 官方安装命令通过，认证 API、版本与官方 profileContext 均正确 |
+| 完整 Linux DSH | 实际启动并通过认证 API 核对 0.5.0 版本 |
+| 新增合并检查 | 字段更新、Linux 删除、主环境删除、账号整体记录、特殊对象键、对象类型变化及 Cordis 表达式 |
+| 原生 WSL 分组 | 检查跨环境同名 ID、项目分组、运行状态排序、归档过滤和搜索 |
+| Desktop 原生 GUI | 本版交互验收在桌面操作中止后尚未完成，不以源码检查代替点击验收 |
 
-本轮运行时测试使用独立的 `DSH_HOME`；没有调用模型 API。它验证真实 Desktop 所带运行时及宿主协议，不等同于原生窗口完整交互验收。实际用户 `desktop` 配置的安装与最终包校验结果另存于发布附件 `verification-0.4.0.json`。
-
-## Desktop 针对性检查
-
-新增的 `test/desktop.test.mjs` 覆盖精确父来源和签名、固定操作列表、随机通道、参数大小上限、元数据变化合并、空闲等待和关闭释放、参数注入拒绝，以及卸载后才完成容器申请的清理。
-
-容器适配检查使用模拟 webview 和真实插件通信模块，确认使用官方 lease 与 partition、重复操作复用页面、返回操作结果、离开所属来源后拒绝请求，以及关闭时释放 lease。该检查没有伪装为真实 Electron 窗口测试。
+真实继承检查使用独立的 Linux 数据目录。测试中继承的插件为 dsh-autocompose 0.3.0、dsh-context 0.62.0、dsh-cost-meter 1.8.4、dsh-pnpm-build-control 0.1.3、dsh-visual-edit 0.5.0。这些版本是本次测试时的实际来源，不是对使用者的固定版本要求。
 
 ## 复现
 
@@ -32,33 +26,30 @@ npm ci
 npm run build
 npm run check
 npm test
-
-$env:DSH_TEST_DESKTOP_ROOT = 'F:\deepseek harness'
-npm run test:host
+npm run test:inheritance
 ```
 
-将安装目录替换为本机目录。最后一项需要已安装的 Desktop、WSL 2、Linux Node/npm 和 Windows npm，会创建隔离测试配置并准备测试用 Linux DSH。通过 `DSH_TEST_DISTRO` 指定其他已安装发行版。通用 CI 只运行前四项，本机 WSL 与 Desktop 集成检查单独记录。
+最后一项需要 Windows、已安装的 Desktop 配置、WSL 2 与两端 Node/npm，默认使用 Ubuntu；可用 DSH_TEST_DISTRO 指定发行版。该项读取本机主环境插件和配置，在随机隔离 Linux 目录进行继承、加载和清理，不调用模型 API。
+
+发布包可用 npm run test:package 验证：先生成 dist/dsh-wsl-native-0.5.0.tgz，脚本通过官方命令安装到源码目录外的隔离配置，并验证宿主认证接口、版本和官方 profileContext。最终安装结果与包 SHA-256 记录在发布附件 verification-0.5.0.json。
 
 ## 历史结果
 
-[0.3.0 报告](validation-0.3.0.md)保留真实 Windows Web 同窗口切换、新建 Windows／WSL 对话、草稿保留、置顶、归档、Linux 文件侧栏、深色主题、窄窗口与刷新后恢复结果。仓库中的统一对话截图均来自该版本的 Web 验证。
+[0.4.0 报告](validation-0.4.0.md)保留 Desktop 内置 Electron 运行时、精确来源与签名、完整 Linux DSH、反向 Windows 互操作和官方桌面配置安装的结果。
 
-[0.2.0 报告](validation-0.2.0.md)保留 10 项真实 WSL 传输、7 项 Linux 文件与环境切换检查、双宿主认证和 30 轮短命令性能测量。常驻连接的中位耗时 4.601 ms，每次启动 wsl.exe 为 289.644 ms；该指标衡量短命令调用开销。0.4.0 没有重复测量未修改的传输和性能路径。
+[0.3.0 报告](validation-0.3.0.md)保留 Windows Web 同窗口切换、草稿、置顶、归档、Linux 文件侧栏、深色主题、窄窗口与刷新恢复结果。仓库中的统一对话截图来自该版本，0.5.0 的布局已有变化。
 
-## 证据文件
+[0.2.0 报告](validation-0.2.0.md)保留 WSL 传输、文件、环境切换及短命令性能测量。常驻连接中位耗时 4.601 ms，每次启动 wsl.exe 为 289.644 ms；本版没有重复测量未修改的执行路径。
 
-| 文件 | 用途 |
-| --- | --- |
-| test/desktop.test.mjs | Desktop 来源、通信和容器生命周期 |
-| test/conversations.test.mjs | Web 同窗口协议、元数据和列表 |
-| test/core.test.mjs、test/environments.test.mjs | 工具、环境隔离、文件、启动复用 |
-| scripts/host-smoke.mjs | 真实 Desktop 内置运行时、认证及完整 Linux DSH |
-| scripts/install-desktop.ps1 | 官方 desktop 配置安装、备份与安装后检查 |
-| docs/evidence/desktop-runtime-v040.json | 本轮运行时检查记录 |
-| docs/evidence/summary.json | 当前构建和检查汇总 |
-| docs/evidence/ui-v030.json、summary-v030.json | 0.3.0 历史结果 |
-| docs/evidence/summary-v020.json | 0.2.0 历史结果 |
+## 证据
 
-发布附件含最终包 SHA-256 与实际安装记录；认证链接、测试宿主数据、私有日志、备份配置和依赖缓存均不发布。
+- [当前汇总](evidence/summary.json)
+- [官方安装包加载](evidence/package-v050.json)
+- [实际插件继承](evidence/inheritance-v050.json)
+- [0.4.0 运行时](evidence/desktop-runtime-v040.json)
+- test/inheritance.test.mjs：合并与原生工作区投影检查。
+- scripts/inheritance-smoke.mjs：实际插件继承、Linux 独立调整及完整宿主加载。
+- scripts/package-smoke.mjs：安装包的官方加载与配置上下文。
+- scripts/install-desktop.ps1：桌面配置备份、安装与原有插件保留检查。
 
-ARM64、其他发行版、WSL 1、Alpine／musl、八个环境同时驻留和耐久运行未实测。当前实机结果使用 Windows x64 与 Ubuntu WSL 2。
+认证链接、账号、私有日志、用户配置备份和依赖缓存不发布。ARM64、其他发行版、WSL 1、Alpine/musl、八个环境同时驻留和长期运行未实测。
