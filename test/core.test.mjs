@@ -101,7 +101,7 @@ test('工作进程并发请求、文件冲突与二进制分块', async t => {
     await t.test('新建目录保留中文名称，拒绝越级路径和已有目录', async () => {
       const name = '中文 WSL 工作区', destination = path.join(dir, name);
       try {
-        assert.equal((await rpc.call('directory.create', { parent: dir, name })).path, destination);
+        assert.equal((await rpc.call('directory.create', { parent: dir, name })).path, path.join(await fs.realpath(dir), name));
         await assert.rejects(rpc.call('directory.create', { parent: dir, name }), { code: 'EEXIST' });
         for (const invalid of ['../outside', '..', 'a/b', 'a\\b', '', ' x '])
           await assert.rejects(rpc.call('directory.create', { parent: dir, name: invalid }), { code: 'INVALID_ARGUMENT' });
