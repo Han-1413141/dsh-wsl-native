@@ -1,6 +1,6 @@
 {
   "name": "dsh-wsl-native",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "DSH for WSL: Windows and WSL hosts, resident stdio bridges, native Linux launch and Windows interoperability",
   "type": "module",
   "main": "src/index.mjs",

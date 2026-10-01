@@ -1,3 +1,5 @@
+import { connectWorkspace } from './workspace-session.mjs';
+
 const draftBindings = new WeakMap();
 
 function draftRegistry(ctx) {
@@ -70,7 +72,7 @@ export function createWorkHandoff(ctx, storage = globalThis.localStorage) {
       let sessionId = record?.sessionId || payload.sessionId;
       if (!sessionId) {
         if (!ctx.workspaces.list.getSnapshot().items.some(item => item.workspaceId === payload.workspaceId)) throw new Error('请先选择目标工作区。');
-        sessionId = await ctx.uiWorkspace.connectWorkspace(payload.workspaceId);
+        sessionId = await connectWorkspace(ctx, payload.workspaceId);
         remember({ sessionId });
       }
       if (!ctx.sessions.list.getSnapshot().byId[sessionId]) await ctx.sessions.refresh();

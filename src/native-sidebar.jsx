@@ -79,7 +79,7 @@ function NativeWorkspaceAdapter({ Native, ctx, model, prefix, ...props }) {
     useSessions={selector => selector(projection.sessions)} useWorkspaces={selector => selector(projection.workspaces)}
     useSessionStatus={selector => selector(projection.status)}
     usePanelInfo={selector => selector(activeKey ? { ...panelInfo, activePanelId: null } : panelInfo)}
-    startSession={id => target(id) ? attempt(() => run(id, 'workspace.start')) : props.startSession(id)}
+    startSession={id => target(id) ? attempt(() => run(id, 'workspace.start')) : void chat.newWindows(id)}
     open={id => target(id) ? void chat.openRow({ ...target(id).row, environment: target(id).entry }) : props.open(id)}
     requestSessionRename={rename}
     renameWorkspace={(id, title) => target(id) ? run(id, 'workspace.rename', { title }) : props.renameWorkspace(id, title)}

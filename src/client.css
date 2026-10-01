@@ -5,6 +5,8 @@
 .dsh-wsl-icon-button { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; padding:0; border:0; border-radius:6px; flex:none; color:var(--dsw-alias-label-secondary); background:transparent; cursor:pointer; }
 .dsh-wsl-icon-button:hover, .dsh-wsl-icon-button[aria-expanded=true] { background:var(--dsw-alias-interactive-bg-hover); }
 .dsh-wsl-icon-button:focus-visible { outline:2px solid var(--dsw-alias-state-business-primary); outline-offset:-2px; }
+.dsh-wsl-add-workspace { width:auto; min-width:48px; gap:3px; padding:0 5px; white-space:nowrap; }
+.dsh-wsl-add-workspace > span { font:500 10px/1 var(--dsw-font-family); letter-spacing:.02em; }
 .dsh-wsl-list-popover { position:absolute; top:34px; right:6px; min-width:155px; z-index:20; padding:5px; border:1px solid var(--dsw-alias-border-l4); border-radius:10px; background:var(--dsw-alias-bg-base); box-shadow:0 6px 22px #0002; }
 .dsh-wsl-list-popover button { display:block; width:100%; text-align:left; border:0; background:transparent; border-radius:6px; padding:7px 9px; font:inherit; color:inherit; cursor:pointer; }
 .dsh-wsl-list-popover button:hover { background:var(--dsw-alias-interactive-bg-hover); }

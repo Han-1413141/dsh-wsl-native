@@ -25,7 +25,8 @@ export function installNativeWorkspaces(ctx, model) {
     node.addEventListener('click', action); return node;
   };
   const toggle = button('切换到紧凑对话列表', 'dsh-wsl-icon-button dsh-wsl-native-toggle', 'M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4', () => model.conversations.setUnified(true));
-  const add = button('新建 WSL 工作区', 'dsh-wsl-icon-button', 'M3 7V5h6l2 2h10v13H3V7m9 4v6m-3-3h6', () => model.conversations.requestWorkspace());
+  const add = button('新建 WSL 工作区', 'dsh-wsl-icon-button dsh-wsl-add-workspace', 'M3 7V5h6l2 2h10v13H3V7m9 4v6m-3-3h6', () => model.conversations.requestWorkspace());
+  const addMark = doc.createElement('span'); addMark.textContent = 'WSL'; addMark.setAttribute('aria-hidden', 'true'); add.append(addMark);
   add.dataset.dshWslOwned = '';
   const pair = doc.createElement('div'); pair.className = 'dsh-wsl-new-pair'; pair.dataset.dshWslOwned = '';
   const win = button('新建 Windows 对话', 'dsh-wsl-new-windows', 'M3 4h18v13H3zM8 21h8m-4-4v4', () => model.conversations.newWindows());

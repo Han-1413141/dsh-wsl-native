@@ -1,3 +1,5 @@
+import { openWorkspace } from './workspace-session.mjs';
+
 import { acceptsMessage, catalogOf, CONVERSATION_PROTOCOL } from './conversation-protocol.mjs';
 import { openProject } from './client-session.mjs';
 import { createDesktopMailbox, DESKTOP_MAILBOX } from './desktop-mailbox.mjs';
@@ -62,7 +64,7 @@ export function startConversationGuest(ctx, model, api, embed) {
         if (payload.create) {
           const workspace = await ctx.workspaces.create({ path: result.settings.directory });
           if (signal.aborted) return;
-          if (!signal.aborted) await ctx.uiWorkspace.openWorkspace(workspace.workspaceId);
+          if (!signal.aborted) await openWorkspace(ctx, workspace.workspaceId, signal);
         } else await openProject(ctx, result.settings.directory, signal);
       }
       publish(true); return;

@@ -37,7 +37,7 @@ export function CompactConversationList({ ctx, model, wide, expandSidebar }) {
       <div className="dsh-wsl-heading-actions">
         <button type="button" className="dsh-wsl-icon-button" aria-label="搜索对话" title="搜索对话" aria-expanded={search} onClick={() => { setSearch(!search); if (search) setQuery(''); setTools(null); }}><Icon name="search" /></button>
         <button type="button" className="dsh-wsl-icon-button" aria-label="筛选对话" title="筛选与归档" aria-expanded={tools === 'filter'} onClick={() => setTools(tools === 'filter' ? null : 'filter')}><Icon name="filter" /></button>
-        <button type="button" className="dsh-wsl-icon-button" aria-label="新建 WSL 工作区" title="新建 WSL 工作区" onClick={() => chat.requestWorkspace()}><Icon name="plus" /></button>
+        <button type="button" className="dsh-wsl-icon-button dsh-wsl-add-workspace" aria-label="新建 WSL 工作区" title="新建 WSL 工作区" onClick={() => chat.requestWorkspace()}><Icon name="plus" /><span aria-hidden="true">WSL</span></button>
       </div>
     </div>
     {tools && <div className="dsh-wsl-list-popover" role="group" aria-label="对话筛选">

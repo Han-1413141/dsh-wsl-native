@@ -3,7 +3,7 @@ import { WslService } from "./service.mjs";
 import { NativeLauncher } from "./launcher.mjs";
 import { ensure } from "./errors.mjs";
 
-const HELP = `DSH for WSL · dsh-wsl-native 0.6.0
+const HELP = `DSH for WSL · dsh-wsl-native 0.6.1
 
   dsh-wsl list                               列出发行版
   dsh-wsl doctor [--distro Ubuntu]            检查 Linux 与 Windows 桥接

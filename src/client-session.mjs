@@ -1,4 +1,5 @@
 import { appOrigin, readHandoff } from "./handoff.mjs";
+import { openWorkspace } from './workspace-session.mjs';
 import { readEmbed } from "./conversation-protocol.mjs";
 import { startConversationGuest } from "./conversation-guest.mjs";
 
@@ -64,7 +65,7 @@ export async function openProject(ctx, directory, signal) {
     choices.find((item) => item.id === saved) ??
     choices.sort((a, b) => b.updatedAt - a.updatedAt)[0];
   if (selected) ctx.uiWorkspace.openSession(selected.id);
-  else await ctx.uiWorkspace.openWorkspace(workspace.workspaceId);
+  else await openWorkspace(ctx, workspace.workspaceId, signal);
   return true;
 }
 

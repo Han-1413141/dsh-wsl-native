@@ -1,4 +1,5 @@
 import { stored } from './client-session.mjs';
+import { startSession } from './workspace-session.mjs';
 import { createWorkHandoff } from './work-handoff.mjs';
 import { readHandoff, appOrigin, DESKTOP_ORIGIN } from './handoff.mjs';
 import { acceptsMessage, catalogOf, cleanCatalog, conversationKey, embeddedUrl,
@@ -120,7 +121,12 @@ export function createConversations(ctx, api, model) {
       entry.ready = false; chat.error = error.message;
       rejectRequests(entry, error.message); model.emit();
     },
-    newWindows() { revision++; ctx.uiWorkspace.startSession(); model.emit(); },
+    async newWindows(workspaceId) {
+      revision++; chat.error = null;
+      try { await startSession(ctx, workspaceId); }
+      catch (error) { chat.error = error.message; }
+      model.emit();
+    },
     async newLinux(entry) {
       const settings = entry?.settings || model.state?.settings;
       if (!settings?.distro) { ctx.layout.selectPanel('dsh-wsl-native'); return; }
