@@ -52,26 +52,31 @@ function DesktopSurface({ entry, model, visible }) {
 }
 
 function ResidentFrame({ entry, model, visible, rect, ctx }) {
-  const chat = model.conversations, [late, setLate] = useState(false);
-  useEffect(() => { const timer = setTimeout(() => setLate(true), 45000); return () => clearTimeout(timer); }, [entry.channel]);
+  const chat = model.conversations;
+  useEffect(() => {
+    if (entry.ready || ['waiting', 'failed'].includes(entry.recovery?.phase)) return;
+    const timer = setTimeout(() => chat.desktopError(entry, new Error('WSL 对话连接超时。')), 45000);
+    return () => clearTimeout(timer);
+  }, [entry, entry.ready, entry.recovery, chat]);
+  const failed = entry.recovery?.phase === 'failed';
   const selected = entry.catalog?.rows.find(row => row.id === entry.catalog.selectedId);
   return <section className="dsh-wsl-resident" aria-label={`WSL · ${entry.settings.distro} 对话`}
     aria-hidden={!visible} inert={!visible} style={visible && rect ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height } : { visibility: 'hidden', left: -20000, top: 0, width: rect?.width || 1000, height: rect?.height || 800 }}>
     <header className="dsh-wsl-chat-toolbar">
       <Button variant="ghost" icon={<IconPanelLeftOutlineRegular />} aria-label="展开或收起对话列表" title="展开或收起对话列表" onClick={() => ctx.layout.toggleSidebar()} />
       <WslMark distro={entry.settings.distro} connected={entry.catalog?.connected} /><span className="dsh-wsl-chat-context" title={selected?.cwd || entry.settings.directory}>{entry.settings.distro}<span> · {selected?.cwd?.split('/').filter(Boolean).at(-1) || 'Linux'}</span></span>
-      <div className="dsh-wsl-chat-toolbar-actions"><Button variant="ghost" disabled={!entry.ready || chat.busy} onClick={() => void chat.newLinux(entry)}>新对话</Button>
+      <div className="dsh-wsl-chat-toolbar-actions"><Button variant="ghost" onClick={() => void chat.newLinux(entry)}>新对话</Button>
         <Button variant="ghost" disabled={!entry.ready || !selected} onClick={() => chat.requestHandoff({ entry, id: selected.id, row: selected })}>交接工作</Button>
         <Button variant="ghost" disabled={!entry.ready} title="管理 Linux 插件与配置" onClick={() => chat.toggleChrome(entry)}>{entry.configOpen ? '返回对话' : 'Linux 配置'}</Button></div>
     </header>
     {chat.error && visible && <div role="alert" className="dsh-wsl-chat-notice">{chat.error}</div>}
-    {entry.ready && !entry.catalog?.connected && <div role="status" className="dsh-wsl-chat-notice">WSL 连接已中断，恢复连接后可继续使用。<Button variant="ghost" disabled={chat.busy} onClick={() => chat.reconnect(entry)}>重新连接</Button></div>}
     <div className="dsh-wsl-chat-frame-body">
       {entry.transport === 'desktop' ? <DesktopSurface entry={entry} model={model} visible={visible} /> :
         <iframe key={entry.channel} title={`WSL ${entry.settings.distro} 原生 DSH 对话`} src={entry.url} ref={element => chat.bind(entry, element)} inert={!visible || !!entry.navigating}
+          onError={() => chat.desktopError(entry, new Error('WSL 页面加载失败。'))}
           referrerPolicy="no-referrer" allow="clipboard-read; clipboard-write" style={{ visibility: visible && entry.ready ? 'visible' : 'hidden' }} />}
-      {!entry.ready && <div className="dsh-wsl-chat-loading"><StateDot state="ongoing" /><span>{late ? 'WSL 对话尚未连接。可以重新连接，或查看环境中的启动状态。' : '正在打开 Linux 对话…'}</span>
-        {late && <Button onClick={() => chat.reconnect(entry)}>重新连接</Button>}
+      {!entry.ready && <div className="dsh-wsl-chat-loading" role="status">{!failed && <StateDot state="ongoing" />}<span>{entry.recovery?.message || '正在打开 Linux 对话…'}{entry.recovery && !failed ? ` (${entry.recovery.attempt}/3)` : ''}</span>
+        {failed && <Button onClick={() => chat.reconnect(entry)}>重新连接</Button>}
         <Button variant="ghost" onClick={() => chat.showWindows()}>返回 Windows</Button></div>}
     </div>
   </section>;

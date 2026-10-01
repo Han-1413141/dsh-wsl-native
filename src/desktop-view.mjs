@@ -18,7 +18,7 @@ export function mountDesktopView({ host, entry, bridge, onMessage, onError, crea
   };
   async function subscribe(current) {
     let sequence = 0;
-    const until = Date.now() + 45000;
+    let until = Date.now() + 45000;
     try {
       while (!disposed && current === generation) {
         const message = await invoke('next', sequence);
@@ -27,7 +27,8 @@ export function mountDesktopView({ host, entry, bridge, onMessage, onError, crea
           if (Date.now() > until) throw new Error('Linux 对话插件尚未就绪，请重新连接。');
           await delay(250); continue;
         }
-        if (message.closed) return;
+        if (message.closed) throw new Error('WSL 对话通信已关闭。');
+        until = Date.now() + 45000;
         if (!Number.isSafeInteger(message.sequence) || message.sequence < sequence) throw new Error('WSL 页面返回了无效游标。');
         sequence = message.sequence;
         if (message.catalog) onMessage({ type: 'catalog', catalog: message.catalog });

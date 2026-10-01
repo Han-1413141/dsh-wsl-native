@@ -28,6 +28,7 @@ export class WslService {
       directory: config.directory ?? "",
     };
     this.profiles = [];
+    this.preferences = { autoStartWsl: false };
     this.jobs = dependencies.jobs ?? new Map();
     this.changes = Promise.resolve();
     this.initialized = dependencies.settings
@@ -40,6 +41,7 @@ export class WslService {
     try {
       const data = JSON.parse(await fs.readFile(this.settingsFile, "utf8"));
       this.settings = this.validateSettings({ ...this.settings, ...data });
+      this.preferences.autoStartWsl = data.preferences?.autoStartWsl === true;
       const profiles = Array.isArray(data.profiles)
         ? data.profiles
         : [this.settings];
@@ -173,19 +175,7 @@ export class WslService {
           (item) => environmentKey(item) !== environmentKey(next),
         ),
       ].slice(0, 32);
-      await fs.mkdir(path.dirname(this.settingsFile), { recursive: true });
-      const temp = this.settingsFile + `.${randomUUID()}.tmp`;
-      try {
-        await fs.writeFile(
-          temp,
-          JSON.stringify({ ...next, profiles }, null, 2) + "\n",
-          { mode: 0o600, flag: "wx" },
-        );
-        aborted(signal);
-        await fs.rename(temp, this.settingsFile);
-      } finally {
-        await fs.unlink(temp).catch(() => {});
-      }
+      await this.persistSettings(next, profiles, this.preferences, signal);
       // Commit only after connection, directory resolution and persistence succeeded.
       this.settings = next;
       this.profiles = profiles;
@@ -197,6 +187,27 @@ export class WslService {
   }
   async saveSettings(p) {
     return (await this.switchEnvironment(p)).settings;
+  }
+  async persistSettings(settings, profiles, preferences, signal) {
+    await fs.mkdir(path.dirname(this.settingsFile), { recursive: true });
+    const temp = this.settingsFile + `.${randomUUID()}.tmp`;
+    try {
+      await fs.writeFile(temp, JSON.stringify({ ...settings, profiles, preferences }, null, 2) + "\n", { mode: 0o600, flag: "wx" });
+      aborted(signal);
+      await fs.rename(temp, this.settingsFile);
+    } finally { await fs.unlink(temp).catch(() => {}); }
+  }
+  async updatePreferences(p, { signal } = {}) {
+    ensure(p && Object.keys(p).length === 1 && typeof p.autoStartWsl === 'boolean', 'INVALID_ARGUMENT', '自动启动设置必须是布尔值。');
+    const change = this.changes.then(async () => {
+      await this.initialized;
+      const preferences = { autoStartWsl: p.autoStartWsl };
+      await this.persistSettings(this.settings, this.profiles, preferences, signal);
+      this.preferences = preferences;
+      return preferences;
+    });
+    this.changes = change.catch(() => {});
+    return change;
   }
   async distros(refresh = false) {
     if (!refresh && this.listCache && Date.now() - this.listCache.at < 30000)
@@ -258,7 +269,7 @@ export class WslService {
       error = e.message;
     }
     return {
-      version: "0.6.3",
+      version: "0.7.0",
       host: process.platform,
       mode:
         process.platform === "win32"
@@ -268,6 +279,7 @@ export class WslService {
             : "unsupported",
       node: process.version,
       settings: this.settings,
+      preferences: this.preferences,
       profiles: this.profiles,
       distros,
       pool: this.pool.snapshot(),

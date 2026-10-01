@@ -55,7 +55,7 @@ export function installNativeWorkspaces(ctx, model) {
       if (pair.previousElementSibling !== nativeButton) nativeButton.after(pair);
       pair.classList.toggle('is-narrow', nativeButton.parentElement.getBoundingClientRect().width < 160);
     }
-    linux.disabled = model.conversations.busy;
+    linux.setAttribute('aria-busy', String(model.conversations.busy));
     const header = sidebar.querySelector('[class*="sectionHeader"]');
     if (header && !model.conversations.unified) {
       const label = header.querySelector(':scope > span');

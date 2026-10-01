@@ -80,7 +80,7 @@ export function catalogOf(ctx) {
   const archived = new Set(workspaces.archivedSessionIds || []);
   const pinned = new Set(workspaces.pinnedSessionIds || []);
   const rows = sessions.ids.map(id => sessions.byId[id]).filter(row => row && !row.parentId).slice(0, 5000);
-  return cleanCatalog({ phase: sessions.phase, connected: ctx.connection.state.getSnapshot() === 'connected',
+  return cleanCatalog({ phase: sessions.phase === 'ready' && workspaces.phase === 'ready' ? 'ready' : 'loading', connected: ctx.connection.state.getSnapshot() === 'connected',
     workspaces: workspaces.items,
     selectedId: rows.find(row => row.retainedBy?.mainView > 0)?.id,
     rows: rows.map(row => ({ id: row.id, title: row.title || (row.blank ? '新对话' : row.displayTitle),

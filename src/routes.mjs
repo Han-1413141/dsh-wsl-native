@@ -173,6 +173,8 @@ export function createController(
       }
       if (route === "settings")
         return (await service.switchEnvironment(p, { signal })).settings;
+      if (route === "preferences")
+        return service.updatePreferences(p, { signal });
       if (route === "environment/switch")
         return service.switchEnvironment(p, { signal });
       if (route === "environment/adopt") {
@@ -343,6 +345,7 @@ export function registerControlRoutes(connection, controller) {
   const endpoints = [
     "status",
     "settings",
+    "preferences",
     "environment/switch",
     "environment/adopt",
     "connect",

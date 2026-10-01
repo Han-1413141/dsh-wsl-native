@@ -73,6 +73,32 @@ async function fixture(t) {
   return { service, pool, calls, settingsFile };
 }
 
+test('auto-start preferences default off and persist without connecting to WSL', async t => {
+  const { service, calls, settingsFile, pool } = await fixture(t);
+  assert.deepEqual((await service.status()).preferences, { autoStartWsl: false });
+  const controller = createController(service);
+  t.after(() => controller.close());
+  await controller.dispatch('preferences', { autoStartWsl: true });
+  assert.deepEqual(calls, []);
+  const next = new WslService({ settingsFile }, { pool, listDistros: async () => [] });
+  t.after(() => next.close());
+  assert.deepEqual((await next.status()).preferences, { autoStartWsl: true });
+  for (const payload of [{}, { autoStartWsl: 'true' }, { autoStartWsl: true, command: 'anything' }])
+    await assert.rejects(service.updatePreferences(payload), { code: 'INVALID_ARGUMENT' });
+  assert.deepEqual(calls, []);
+});
+
+test('environment changes and auto-start preference writes preserve each other', async t => {
+  const { service, settingsFile } = await fixture(t);
+  await Promise.all([service.updatePreferences({ autoStartWsl: true }), service.switchEnvironment({ distro: 'Ubuntu', directory: '/home/alice' })]);
+  const file = JSON.parse(await fs.readFile(settingsFile, 'utf8'));
+  assert.equal(file.preferences.autoStartWsl, true); assert.equal(file.directory, '/home/alice');
+  const cancelled = new AbortController(); cancelled.abort();
+  await assert.rejects(service.updatePreferences({ autoStartWsl: false }, { signal: cancelled.signal }));
+  assert.equal(service.preferences.autoStartWsl, true);
+  assert.deepEqual(JSON.parse(await fs.readFile(settingsFile, 'utf8')), file);
+});
+
 test("切换先验证目录；失败不改设置、历史或持久化文件", async (t) => {
   const { service, settingsFile } = await fixture(t);
   await service.switchEnvironment({

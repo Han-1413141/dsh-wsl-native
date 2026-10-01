@@ -1,5 +1,6 @@
 import { stored } from './client-session.mjs';
 import { startSession } from './workspace-session.mjs';
+import { createConnectionRecovery } from './connection-recovery.mjs';
 import { createWorkHandoff } from './work-handoff.mjs';
 import { readHandoff, appOrigin, DESKTOP_ORIGIN } from './handoff.mjs';
 import { acceptsMessage, catalogOf, cleanCatalog, conversationKey, embeddedUrl,
@@ -7,10 +8,16 @@ import { acceptsMessage, catalogOf, cleanCatalog, conversationKey, embeddedUrl,
 
 export function createConversations(ctx, api, model) {
   const entries = new Map(), requests = new Map(), lifetime = new AbortController();
-  const closedViews = new Set(), restoring = new Set(), restoreTried = new Map();
+  const closedViews = new Set();
+  const requestedEnvironments = new Set(), starting = new Map();
+  const recovery = createConnectionRecovery({
+    retry: entry => chat.reconnect(entry, true),
+    current: key => !lifetime.signal.aborted && !closedViews.has(key) && requestedEnvironments.has(key) ? entries.get(key) : null,
+    changed: () => model.emit(),
+  });
   const localHandoff = createWorkHandoff(ctx);
   const savedOrder = stored('workspace-order', undefined, localStorage);
-  let revision = 0, saveTimer, lastLocal;
+  let revision = 0, saveTimer, lastLocal, startupChecked = false;
   const chat = {
     entries, activeKey: null, error: null, busy: false, anchor: null, dialog: null, catalogRevision: 0,
     workspaceOrder: Array.isArray(savedOrder) ? savedOrder.filter(id => typeof id === 'string').slice(0, 16000) : [],
@@ -29,14 +36,18 @@ export function createConversations(ctx, api, model) {
     setWorkspaceOrder(order) { chat.workspaceOrder = order; stored('workspace-order', order, localStorage); model.emit(); },
     async remote(entry, action, payload) {
       if (!entry.ready) {
-        if (chat.busy) throw new Error('WSL 环境正在连接，请稍后重试。');
         await chat.enter(entry.settings, { connectOnly: true }, false);
         await new Promise((resolve, reject) => {
           let unsubscribe = () => {};
           const finish = error => { clearTimeout(timer); unsubscribe(); lifetime.signal.removeEventListener('abort', abort); error ? reject(error) : resolve(); };
           const abort = () => finish(new Error('窗口已关闭。'));
-          const timer = setTimeout(() => finish(new Error(chat.error || 'WSL 页面连接超时，请重新连接。')), 45000);
-          const check = () => { const current = entries.get(entry.key); if (current?.ready) { entry = current; finish(); } else if (chat.error) finish(new Error(chat.error)); };
+          const timer = setTimeout(() => finish(new Error(chat.error || 'WSL 页面连接超时，请重新连接。')), 180000);
+          const check = () => {
+            const current = entries.get(entry.key);
+            if (current?.ready) { entry = current; finish(); }
+            else if (closedViews.has(entry.key)) finish(new Error('这个环境的页面已关闭。'));
+            else if (current?.recovery?.phase === 'failed' || chat.error) finish(new Error(current?.recovery?.message || chat.error));
+          };
           unsubscribe = model.subscribe(check); lifetime.signal.addEventListener('abort', abort, { once: true }); check();
         });
       }
@@ -68,30 +79,30 @@ export function createConversations(ctx, api, model) {
       try { await navigate(entry, { sessionId: row.id }); }
       catch (error) { chat.error = error.message; model.emit(); }
     },
-    async enter(settings, intent = {}, select = true) {
-      if (chat.busy) return;
-      const current = ++revision;
-      chat.busy = true; chat.error = null; model.emit();
+    async enter(settings, intent = {}, select = true, automatic = false) {
+      const key = conversationKey(settings);
+      if (lifetime.signal.aborted || (automatic && closedViews.has(key))) return;
+      if (!automatic) {
+        recovery.cancel(key);
+        const existing = entries.get(key);
+        if (existing?.recovery) { existing.recovery = null; existing.origin = null; }
+      }
+      closedViews.delete(key); requestedEnvironments.add(key);
+      const current = select ? ++revision : revision;
+      chat.error = null; model.emit();
       try {
-        const result = await api('native/enter', { ...settings, parentOrigin: appOrigin(location.origin) });
-        let handoff;
-        const until = Date.now() + 10 * 60 * 1000;
-        while (!lifetime.signal.aborted && Date.now() < until) {
-          const state = await model.refresh();
-          handoff = state.handoffs.find(item => item.id === result.id);
-          if (handoff?.state === 'failed') throw new Error(handoff.error);
-          if (handoff?.state === 'ready') break;
-          await new Promise(resolve => setTimeout(resolve, 700));
-        }
-        if (lifetime.signal.aborted) return;
-        if (handoff?.state !== 'ready') throw new Error('Linux 启动仍未完成，请在环境面板查看进度。');
-        await chat.adopt(handoff, intent, select && current === revision);
-      } catch (error) { chat.error = error.message; }
-      finally { chat.busy = false; model.emit(); }
+        const handoff = await ensureHost(settings);
+        if (lifetime.signal.aborted || closedViews.has(key)) return;
+        await chat.adopt(handoff, current !== revision ? { connectOnly: true } : intent, select && current === revision);
+      } catch (error) {
+        if (automatic) throw error;
+        chat.error = error.message; model.emit();
+      }
     },
     async adopt(handoff, intent = {}, select = true) {
       const key = conversationKey(handoff.settings);
       closedViews.delete(key);
+      requestedEnvironments.add(key);
       const origin = new URL(handoff.url).origin;
       let entry = entries.get(key);
       if (!entry || entry.origin !== origin) {
@@ -99,7 +110,7 @@ export function createConversations(ctx, api, model) {
           throw new Error('同一窗口最多保持 8 个 Linux 环境。在对话菜单中关闭不用的环境页面后可继续打开，后台任务不受影响。');
         if (entry) rejectRequests(entry, 'Linux 已重新启动，请重试这次操作。');
         const channel = crypto.randomUUID();
-        entry = { key, settings: handoff.settings, origin, channel, catalog: entry?.catalog || null,
+        entry = { key, settings: handoff.settings, origin, channel, catalog: entry?.catalog || null, recovery: entry?.recovery || null,
           url: embeddedUrl(handoff.url, channel, location.origin), openUrl: handoff.url,
           transport: appOrigin(location.origin) === DESKTOP_ORIGIN ? 'desktop' : 'iframe',
           ready: false, compact: true, window: null, waiting: null, startedAt: Date.now() };
@@ -118,8 +129,9 @@ export function createConversations(ctx, api, model) {
     desktopMessage(entry, message) { if (entries.get(entry.key) === entry) accept(entry, message); },
     desktopError(entry, error) {
       if (entries.get(entry.key) !== entry) return;
-      entry.ready = false; chat.error = error.message;
-      rejectRequests(entry, error.message); model.emit();
+      entry.ready = false;
+      rejectRequests(entry, error.message);
+      recovery.failed(entry, error); model.emit();
     },
     async newWindows(workspaceId) {
       revision++; chat.error = null;
@@ -155,17 +167,44 @@ export function createConversations(ctx, api, model) {
     },
     closeView(entry) {
       closedViews.add(entry.key);
+      recovery.cancel(entry.key);
       rejectRequests(entry, '这个环境的页面已关闭，后台任务继续运行。');
       if (chat.activeKey === entry.key) chat.showWindows();
       delete entry.url; entry.window = null; entry.ready = false; entry.origin = null;
       entry.waiting = null; save(); model.emit();
     },
-    reconnect(entry) { // A user-requested reload; never replay a message or a file operation.
+    stopRecovery(settings) {
+      for (const key of requestedEnvironments) if (!settings || key === conversationKey(settings)) { closedViews.add(key); recovery.cancel(key); }
+      for (const entry of entries.values()) if (!settings || entry.key === conversationKey(settings)) chat.closeView(entry);
+    },
+    reconnect(entry, automatic = false) {
+      if (entries.get(entry.key) !== entry || closedViews.has(entry.key)) return Promise.resolve();
+      if (!automatic) { recovery.cancel(entry.key); entry.recovery = null; }
+      // Only an intent never dispatched to the guest may survive reconnect.
+      const intent = entry.waiting || (entry.catalog?.selectedId ? { sessionId: entry.catalog.selectedId } : { connectOnly: true });
       rejectRequests(entry, '连接正在重新建立。');
       entry.origin = null;
-      void chat.enter(entry.settings, entry.catalog?.selectedId ? { sessionId: entry.catalog.selectedId } : {});
+      return chat.enter(entry.settings, intent, !automatic && chat.visible() && chat.activeKey === entry.key, automatic);
     },
   };
+  function ensureHost(settings) {
+    const key = JSON.stringify([conversationKey(settings), settings.directory]);
+    if (starting.has(key)) return starting.get(key);
+    const operation = Promise.resolve().then(async () => {
+      const result = await api('native/enter', { ...settings, parentOrigin: appOrigin(location.origin) });
+      const until = Date.now() + 10 * 60 * 1000;
+      while (!lifetime.signal.aborted && Date.now() < until) {
+        const state = await model.refresh();
+        const handoff = state.handoffs.find(item => item.id === result.id);
+        if (handoff?.state === 'failed') throw new Error(handoff.error);
+        if (handoff?.state === 'ready') return handoff;
+        await new Promise(resolve => setTimeout(resolve, 700));
+      }
+      throw new Error('Linux 启动未完成，请在环境面板查看进度。');
+    }).finally(() => { starting.delete(key); chat.busy = starting.size > 0; model.emit(); });
+    starting.set(key, operation); chat.busy = true; model.emit();
+    return operation;
+  }
   function save() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => stored('conversation-catalogs', [...entries.values()].map(entry => ({
@@ -217,10 +256,12 @@ export function createConversations(ctx, api, model) {
     if (message.type === 'catalog') {
       const catalog = cleanCatalog(message.catalog); if (!catalog) return;
       const first = !entry.ready;
-      entry.ready = true; entry.catalog = catalog; entry.lastSeen = Date.now();
+      entry.ready = catalog.phase === 'ready' && catalog.connected; entry.catalog = catalog; entry.lastSeen = Date.now();
       chat.catalogRevision++;
-      if (first) theme(entry);
-      if (entry.waiting) {
+      if (catalog.connected && entry.ready) recovery.connected(entry);
+      else if (!catalog.connected) recovery.failed(entry, new Error('WSL 连接已中断。'), 15000);
+      if (first && entry.ready) theme(entry);
+      if (entry.waiting && entry.ready && catalog.connected) {
         const payload = entry.waiting; entry.waiting = null;
         void navigate(entry, payload).catch(error => { chat.error = error.message; model.emit(); });
       }
@@ -242,24 +283,20 @@ export function createConversations(ctx, api, model) {
   };
   const restoreRunning = () => {
     if (model.state?.mode !== 'windows-host') return;
-    for (const instance of model.state.native?.instances || []) {
-      const key = conversationKey(instance.settings);
-      if (!instance.running?.openUrl || entries.get(key)?.url || closedViews.has(key) || restoring.has(key)) continue;
-      let origin;
-      try { origin = new URL(instance.running.openUrl).origin; } catch { continue; }
-      if (restoreTried.get(key) === origin) continue;
-      restoreTried.set(key, origin);
-      restoring.add(key);
-      void chat.adopt({ settings: instance.settings, url: instance.running.openUrl }, {}, false)
-        .catch(error => { chat.error = error.message; })
-        .finally(() => { restoring.delete(key); model.emit(); });
+    if (!startupChecked) {
+      startupChecked = true;
+      if (model.state.preferences?.autoStartWsl === true) {
+        const settings = model.state.settings;
+        const distro = settings.distro || model.state.distros.find(item => item.isDefault)?.name || model.state.distros[0]?.name;
+        if (distro) void chat.enter({ ...settings, distro }, { connectOnly: true }, false).catch(() => {});
+      }
     }
   };
   const disposers = [ctx.sessions.list.subscribe(notifyLocal), ctx.workspaces.list.subscribe(notifyLocal),
     ctx.layout.panelInfo.subscribe(() => { model.emit(); }), model.subscribe(restoreRunning)];
   restoreRunning();
   chat.dispose = () => {
-    lifetime.abort(); observer.disconnect(); clearTimeout(saveTimer);
+    lifetime.abort(); recovery.dispose(); observer.disconnect(); clearTimeout(saveTimer);
     window.removeEventListener('message', receive);
     for (const dispose of disposers) dispose();
     for (const entry of entries.values()) rejectRequests(entry, '窗口已关闭。');

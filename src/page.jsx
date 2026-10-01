@@ -4,6 +4,7 @@ import {
   Input,
   Modal,
   StateDot,
+  Switch,
   IconChevronDownOutlineRegular,
   IconFolderOpenOutlineRegular,
   IconRefreshOutlineRegular,
@@ -253,6 +254,11 @@ export function WslPage({ api, ctx, model }) {
         <Button variant="ghost" onClick={() => model.conversations.setUnified(!model.conversations.unified)}>
           {model.conversations.unified ? '使用原生工作区列表' : '切换到紧凑对话列表'}
         </Button>
+      </div>}
+      {!wslHost && <div className="dsh-wsl-startup-setting">
+        <div><strong>随 DSH 启动 WSL 环境</strong><small>下次打开 DSH 时启动上次使用的环境。关闭后按需启动，当前任务继续运行。</small></div>
+        <Switch label="随 DSH 启动 WSL 环境" checked={state.preferences?.autoStartWsl === true} disabled={disabled}
+          onChange={checked => void task('preferences', () => api('preferences', { autoStartWsl: checked }))} />
       </div>}
       {statusText && (
         <div
@@ -763,6 +769,7 @@ export function WslPage({ api, ctx, model }) {
                     action.kind === "stop" ? "native/stop" : "disconnect",
                     action.settings || {},
                   );
+                  model.conversations.stopRecovery(action.kind === 'stop' ? action.settings : null);
                   model.readyLink = null;
                   setNotice({
                     text:

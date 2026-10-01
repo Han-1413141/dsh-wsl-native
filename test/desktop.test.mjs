@@ -97,7 +97,9 @@ test('Desktop view uses an approved isolated lease, retains one page and ends ow
   assert.equal(loads, 1); assert.equal(commands.length, 2);
   assert.equal(attrs.get('partition'), 'isolated'); assert.equal(attrs.get('src'), 'about:blank#owned');
   assert.equal(attrs.has('preload'), false); assert.equal(attrs.has('disablewebsecurity'), false);
+  box.dispose(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(errors.length, 1); assert.match(errors[0].message, /通信已关闭/);
   element.url = 'https://example.com/'; await assert.rejects(view.request('navigate', { sessionId: 'c' }));
   view.dispose(); await new Promise(resolve => setImmediate(resolve));
-  assert.equal(removed, true); assert.deepEqual(releases, ['owned']); assert.deepEqual(errors, []);
+  assert.equal(removed, true); assert.deepEqual(releases, ['owned']); assert.equal(errors.length, 1);
 });

@@ -148,15 +148,16 @@ export function createClientModel(ctx, api) {
         )
           throw new Error("目标 DSH 与选定的 Linux 环境不一致。");
         const result = await api("environment/adopt", handoff);
+        if (disposed) return;
         if (handoff.parentOrigin) {
           model.parentOrigin = handoff.parentOrigin;
           stored("parentOrigin", handoff.parentOrigin);
         }
-        if (
-          await openProject(ctx, result.settings.directory, lifetime.signal)
-        ) {
+        // The parent owns embedded navigation. Establish the verified channel even
+        // when native startup changes selection; warming a page must not create a session.
+        if (embed) startConversationGuest(ctx, model, api, embed);
+        if (embed || await openProject(ctx, result.settings.directory, lifetime.signal)) {
           stored("arrived", handoff.id);
-          if (embed) startConversationGuest(ctx, model, api, embed);
           history.replaceState(
             history.state,
             "",

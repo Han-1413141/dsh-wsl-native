@@ -70,4 +70,5 @@ test('native catalog projects real workspace ownership and excludes subagents', 
   assert.equal(result.rows.length, 1); assert.equal(result.rows[0].workspaceId, 'w');
   assert.equal(result.rows[0].pinned, true); assert.equal(result.rows[0].running, true);
   assert.equal(result.selectedId, 'a'); assert.equal(result.connected, true);
+  assert.equal(result.phase, 'loading', 'workspace initialization must complete before commands are dispatched');
 });

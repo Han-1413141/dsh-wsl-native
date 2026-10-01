@@ -749,7 +749,9 @@ html[data-dsh-wsl-conversation] [data-rightbar-col] { visibility:hidden; pointer
 .dsh-wsl-new-pair { display:flex; gap:6px; margin:0 2px 12px; }
 .dsh-wsl-new-pair > button { display:flex; align-items:center; justify-content:center; gap:7px; flex:1; min-width:0; height:38px; border:1px solid var(--dsw-alias-border-l4); border-radius:var(--dsw-radius-button,10px); font:14px var(--dsw-font-family); cursor:pointer; transition:background .12s ease; }
 .dsh-wsl-new-windows { color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-base); }
-.dsh-wsl-new-linux { color:var(--dsw-alias-label-primary); background:color-mix(in srgb,var(--dsw-alias-label-primary) 6%,var(--dsw-alias-bg-base)); }
+.dsh-wsl-new-pair > .dsh-wsl-new-linux { color:var(--dsw-alias-label-primary-foreground); background:var(--dsw-alias-button-primary-fill); border-color:transparent; }
+.dsh-wsl-new-pair > .dsh-wsl-new-linux:hover { background:var(--dsw-alias-button-primary-hover); }
+.dsh-wsl-new-pair > button:focus-visible { outline:2px solid var(--dsw-alias-label-primary); outline-offset:2px; }
 .dsh-wsl-new-pair > button:hover { background:var(--dsw-alias-interactive-bg-hover); }
 .dsh-wsl-new-pair > button:disabled { opacity:.5; cursor:default; }
 .dsh-wsl-new-pair.is-narrow { flex-direction:column; }
@@ -758,6 +760,10 @@ html[data-dsh-wsl-conversation] [data-rightbar-col] { visibility:hidden; pointer
 .dsh-wsl-native-toggle { margin-right:auto; }
 .dsh-wsl-workspace-mark { flex:none; font:10px/16px var(--dsw-font-family); color:var(--dsw-alias-label-tertiary); border:1px solid var(--dsw-alias-border-l4); border-radius:4px; padding:0 4px; margin-left:5px; }
 .dsh-wsl-session-mark { margin-left:2px; margin-right:4px; white-space:nowrap; pointer-events:none; }
+.dsh-wsl-startup-setting { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:12px 16px; border:1px solid var(--dsw-alias-border-l4); border-radius:10px; }
+.dsh-wsl-startup-setting > div { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.dsh-wsl-startup-setting strong { font-size:13px; font-weight:500; }
+.dsh-wsl-startup-setting small { color:var(--dsw-alias-label-tertiary); font-size:12px; line-height:1.5; }
 .dsh-wsl-row-action { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; padding:0; border:0; border-radius:5px; color:var(--dsw-alias-label-secondary); background:transparent; cursor:pointer; }
 .dsh-wsl-row-action:hover { background:var(--dsw-alias-interactive-bg-hover); }
 .dsh-wsl-page .dsh-wsl-inheritance { padding:20px; }

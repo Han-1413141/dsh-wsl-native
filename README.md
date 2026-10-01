@@ -1,6 +1,6 @@
 # DSH for WSL
 
-在同一个 Windows DSH 窗口里使用 Windows 和原生 Linux 对话。WSL 对话带有标志，点击对话即可切换环境，保留各自的草稿和任务。包名为 `dsh-wsl-native`，当前版本为 **0.6.3**，适配 **DeepSeek Harness 0.2.0-rc.2**，支持 Windows Desktop 和 Windows Web。
+在同一个 Windows DSH 窗口里使用 Windows 和原生 Linux 对话。WSL 对话带有标志，点击对话即可切换环境，保留各自的草稿和任务。包名为 `dsh-wsl-native`，当前版本为 **0.7.0**，适配 **DeepSeek Harness 0.2.0-rc.2**，支持 Windows Desktop 和 Windows Web。
 
 [下载安装包](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) · [桌面端安装与使用](docs/desktop.md) · [完整手册](docs/usage.md) · [问题反馈](https://github.com/Han-1413141/dsh-wsl-native/issues)
 
@@ -19,11 +19,11 @@
 
 ### 安装到 Windows 桌面端
 
-从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.6.3.tgz`，保留在固定目录。在 PowerShell 中使用 **桌面端附带的 CLI** 安装；将下面的路径换成本机安装目录和包路径：
+从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.7.0.tgz`，保留在固定目录。在 PowerShell 中使用 **桌面端附带的 CLI** 安装；将下面的路径换成本机安装目录和包路径：
 
 ```powershell
 $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
-& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.6.3.tgz'
+& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.7.0.tgz'
 ```
 
 `desktop` 是桌面端配置，`web` 是另一个配置。已在 PATH 中配置桌面端 CLI 时，也可直接使用 `dsh plugin --profile desktop add ...`。安装后在桌面端查找 **WSL 与 Windows**；若当前窗口尚未显示入口，等当前任务结束后从托盘退出 DSH，再重新打开。
@@ -43,6 +43,8 @@ $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 7. WSL 对话顶部的 **Linux 配置** 直接打开 Linux 插件管理。环境面板中的 **Linux 插件与配置** 可以控制继承选项。原有 **新窗口打开** 方式继续保留。
 
 每个发行版和用户分别记忆最近目录。再次进入同一项目时优先打开上次查看的会话。目录输入接受 Linux、Windows 和 WSL UNC 路径，验证成功后才更新设置。从 Windows 插件进入时，Linux 默认继承当前主环境的插件、设置和模型账号；在 Linux 单独修改的项目会保留。详见[继承与独立调整](docs/inheritance.md)。
+
+**按需启动与自动重连：** 默认不会随 DSH 启动 WSL。点击 WSL 对话、顶部 WSL 按钮或创建 WSL 工作区时才启动所需环境；缓存的工作区列表仍然显示。在 **WSL 与 Windows → 随 DSH 启动 WSL 环境** 打开开关后，下次打开 DSH 会在后台启动上次使用的环境，当前 Windows 页面保持原位。页面通信中断时最多自动重连 3 次，已提交的新建、消息和交接操作不会自动重放。详见[启动与重连](docs/desktop.md#启动与重连)。
 
 两边共用窗口和对话列表，各条对话继续使用所属环境的运行进程、权限和文件系统。切换不会迁移一条对话到另一个系统。账号继承仅在本机准备 Linux 环境时进行，可在环境面板关闭；会话数据保持独立。Desktop 使用 DSH 官方隔离网页容器；Web 使用同窗口嵌入页。两种入口共用会话列表和环境管理。
 
@@ -70,7 +72,7 @@ Windows 上的 `setup` 默认由 Windows npm 下载依赖，再由 Linux npm 离
 安装到需要使用的 DSH 配置：
 
 ```powershell
-dsh plugin --profile web add "C:\path\to\dsh-wsl-native-0.6.3.tgz"
+dsh plugin --profile web add "C:\path\to\dsh-wsl-native-0.7.0.tgz"
 dsh web
 ```
 
@@ -84,7 +86,7 @@ Windows 原有工具继续工作。插件增加的工具以 `wsl_native_` 开头
 
 ![Windows Web 同窗口 Windows 与 WSL 对话，0.3.0 实测截图](docs/assets/unified-conversations.png)
 
-上图是 0.3.0 的历史截图。0.6.3 已收起常驻搜索与筛选区，新增原生工作区切换按钮，并隐藏 Linux 的重复侧栏。
+上图是 0.3.0 的历史截图。0.7.0 已收起常驻搜索与筛选区，新增原生工作区切换按钮，并隐藏 Linux 的重复侧栏。
 
 ## 可以做什么
 

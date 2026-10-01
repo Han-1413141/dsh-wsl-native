@@ -1,6 +1,6 @@
 # Windows 桌面端安装与使用
 
-`dsh-wsl-native` 0.6.0 让 Windows DSH 和 WSL 中完整的 Linux DSH 共用一个桌面窗口、一个对话列表。WSL 对话带 `WSL` 标志；点击不同对话即可切换。Windows 对话继续使用 Windows，WSL 对话使用 Linux 原生 Bash、文件系统与工作区。
+`dsh-wsl-native` 0.7.0 让 Windows DSH 和 WSL 中完整的 Linux DSH 共用一个桌面窗口、一个对话列表。WSL 对话带 `WSL` 标志；点击不同对话即可切换。Windows 对话继续使用 Windows，WSL 对话使用 Linux 原生 Bash、文件系统与工作区。
 
 ## 安装条件
 
@@ -13,13 +13,13 @@
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.6.0.tgz`，保存到固定位置。发布页附有 `SHA256SUMS`；可用 `Get-FileHash -Algorithm SHA256` 核对包文件。
+从 [GitHub Releases](https://github.com/Han-1413141/dsh-wsl-native/releases/latest) 下载 `dsh-wsl-native-0.7.0.tgz`，保存到固定位置。发布页附有 `SHA256SUMS`；可用 `Get-FileHash -Algorithm SHA256` 核对包文件。
 
 使用桌面端安装目录内的 `resources\runtime\cli\bin\dsh.cmd`。下面以 `F:\deepseek harness` 为例，请换成本机实际目录：
 
 ```powershell
 $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
-& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.6.0.tgz'
+& $dshDesktop plugin --profile desktop add 'C:\Downloads\dsh-wsl-native-0.7.0.tgz'
 & $dshDesktop plugin --profile desktop list --depth 0
 ```
 
@@ -33,7 +33,7 @@ $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 
 ```powershell
 .\scripts\install-desktop.ps1 `
-  -PackagePath 'C:\Downloads\dsh-wsl-native-0.6.0.tgz' `
+  -PackagePath 'C:\Downloads\dsh-wsl-native-0.7.0.tgz' `
   -DshCommand 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 ```
 
@@ -70,6 +70,20 @@ $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 
 完整的工作区操作和双向交接示例见[工作区与交接](workspaces.md)。
 
+## 启动与重连
+
+在 **WSL 与 Windows** 页面控制 **随 DSH 启动 WSL 环境**，默认关闭。
+
+- **关闭：** 打开 DSH 或查看缓存的 WSL 工作区列表不会启动 Linux。点击 WSL 对话、新建 WSL 对话或创建 WSL 工作区时启动所需环境。主动浏览 Linux 目录、连接 WSL 或调用 Linux 工具也会建立相应连接。
+- **打开：** 下次启动 Windows DSH 时，在后台准备上次使用的发行版与用户，不自动新建对话，也不切走当前 Windows 页面。只有一个环境自动启动，不会逐个启动所有缓存项目。
+- 开关保存到主环境的插件设置。修改开关不停止当前 Linux 任务，关闭环境页面或主动停止环境后也不会自动重新打开。
+
+顶部 WSL 按钮使用跟随主题的主按钮样式，Windows 按钮保持描边。后台启动与重连期间仍可点击 WSL；重复点击共用进行中的启动请求，最后一次选择决定打开的页面。
+
+Linux 页面在验证启动链接后立即建立通信，不再等待工作区恢复。工作区与会话列表都准备完成后才执行导航。原生连接短暂断开时先等待 15 秒让 DSH 自行恢复；页面退出、加载失败或长时间未就绪时自动重新建立页面，最多重试 3 次，并显示进度。恢复稳定 60 秒后重置重试次数，失败后保留手动重连入口。
+
+重连只恢复页面和选中会话。已分派的新建、消息发送、交接和文件操作不会自动重放；没有收到结果的操作应先查看目标环境。关闭环境页面会取消其待执行的自动重连，后台任务按原有方式继续运行。
+
 ## 与 Windows 互动
 
 在 Linux 对话中，原生工具执行 Linux 工作；需要 Windows 操作时使用插件提供的 `wsl_native_*` 工具。例如：
@@ -96,7 +110,7 @@ $dshDesktop = 'F:\deepseek harness\resources\runtime\cli\bin\dsh.cmd'
 
 ## 版本与验证
 
-本版完成 56 项自动化检查，并在真实 WSL 中验证主环境的 5 个插件继承、Linux 独立配置保留和完整宿主加载。0.4.0 已通过 Desktop 内置 Electron 运行时、认证 API、Desktop 签名和反向 Windows 互操作检查。桌面端容器使用官方 `browser.acquire/release` 接口，保留宿主的隔离与安全设置。
+本版完成 80 项自动化检查，新增启动策略、签名后的通信初始化、并发点击、断线恢复与不重复提交的检查。0.5.0 曾在真实 WSL 中验证主环境的 5 个插件继承、Linux 独立配置保留和完整宿主加载。0.4.0 已通过 Desktop 内置 Electron 运行时、认证 API、Desktop 签名和反向 Windows 互操作检查。桌面端容器使用官方 `browser.acquire/release` 接口，保留宿主的隔离与安全设置。
 
 原生桌面窗口的鼠标操作、快捷键和长时间运行尚未逐项验收。仓库截图来自 Windows Web 的真实同窗口检查；不把 Web 截图当作 Desktop 实测截图。各项记录见[验证报告](validation.md)，安装问题见[故障处理](troubleshooting.md)。
 
