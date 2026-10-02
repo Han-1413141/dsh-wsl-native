@@ -88,6 +88,15 @@ Windows 原有工具继续工作。插件增加的工具以 `wsl_native_` 开头
 
 上图是 0.3.0 的历史截图。0.7.0 已收起常驻搜索与筛选区，新增原生工作区切换按钮，并隐藏 Linux 的重复侧栏。
 
+### 从公开安装包直接安装
+
+也可以直接把 GitHub Release 的公开下载地址交给 DSH CLI：
+
+```powershell
+dsh plugin --profile desktop add https://github.com/Han-1413141/dsh-wsl-native/releases/download/v0.7.0/dsh-wsl-native-0.7.0.tgz
+```
+
+
 ## 可以做什么
 
 - 复用 Windows、Linux 常驻工作进程；并发命令各自使用明确的目录和环境变量。
